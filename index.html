@@ -42,6 +42,20 @@
   .btn-confirm:active { background: #f57f17; color: #fff; }
   .btn-cancel { padding: 8px 12px; background: #eee; color: #666; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
 
+  /* Camera */
+  .camera-section { padding: 10px 12px; background: #fff; border-bottom: 1px solid #eee; }
+  .btn-camera { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-camera:active { opacity: 0.85; }
+  .camera-preview { position: relative; margin-top: 10px; border-radius: 12px; overflow: hidden; background: #000; }
+  .camera-preview img { width: 100%; max-height: 280px; object-fit: contain; display: block; }
+  .camera-preview .btn-remove { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 18px; cursor: pointer; line-height: 32px; text-align: center; }
+  .camera-loading { text-align: center; padding: 16px; color: #888; font-size: 13px; }
+  .camera-loading .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #ddd; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .camera-result { background: #f0f9ff; border: 1.5px solid #667eea; border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #333; }
+  .camera-result strong { color: #667eea; }
+  .camera-error { background: #fff0f0; border: 1.5px solid #ef5350; border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #c62828; }
+
   /* Quick add */
   .quick-bar { padding: 8px 12px; background: #fff; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #eee; }
   .quick-chip { background: #f0f0f0; border: 1px solid #ddd; border-radius: 20px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
@@ -145,6 +159,15 @@
     <input type="text" id="newMarketInput" placeholder="输入新市场名称，如：城南市场" onkeydown="if(event.key==='Enter')confirmNewMarket()">
     <button class="btn-confirm" onclick="confirmNewMarket()">添加</button>
     <button class="btn-cancel" onclick="hideNewMarket()">取消</button>
+  </div>
+
+  <!-- Camera section -->
+  <div class="camera-section" id="cameraSection">
+    <button class="btn-camera" onclick="triggerCamera()">
+      📷 拍照识别价签
+    </button>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleCamera(this)">
+    <div id="cameraArea"></div>
   </div>
 
   <!-- Quick chips -->
@@ -541,6 +564,167 @@ function loadDB() {
 function debounce(fn, ms) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ============ Camera / AI Vision ============
+const API_KEY = 'sk-M8eGQbR78xqQgkZjZRE0Gyk89Pjzr0Ha8i6KLb6nrv29esjB';
+const API_BASE = 'https://api.mytokenland.com';
+
+function triggerCamera() {
+  document.getElementById('cameraInput').click();
+}
+
+function handleCamera(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const area = document.getElementById('cameraArea');
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    area.innerHTML = `
+      <div class="camera-preview">
+        <img src="${e.target.result}" id="previewImg">
+        <button class="btn-remove" onclick="clearCamera()">×</button>
+      </div>
+      <div class="camera-loading" id="camLoading">
+        <span class="spinner"></span>AI 识别中，请稍候...
+      </div>`;
+
+    // Send to AI
+    recognizeImage(file);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearCamera() {
+  document.getElementById('cameraArea').innerHTML = '';
+  document.getElementById('cameraInput').value = '';
+}
+
+async function recognizeImage(file) {
+  const area = document.getElementById('cameraArea');
+
+  try {
+    // Compress image to reduce size
+    const base64 = await compressAndEncode(file);
+
+    const response = await fetch(`${API_BASE}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: base64 }
+          }, {
+            type: 'text',
+            text: `这是一张菜市场价签/价目表的照片。请识别出：
+1. 商品名称（食材名，如"牛肉"、"土豆"等）
+2. 单价（数字，如"35"、"12.5"等，注意单位是元/斤还是元/公斤等）
+
+请只返回JSON格式，不要任何解释，格式如下：
+{"name":"食材名","price":"数字","unit":"单位"}
+
+如果照片中有多个商品，只识别最醒目/最大的那个。如果无法识别，返回{"name":"","price":"","unit":""}`
+          }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`API错误 ${response.status}: ${err}`);
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    // Parse JSON from response
+    let result = null;
+    try {
+      // Try to extract JSON from the text
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      }
+    } catch(e) {}
+
+    if (result && result.name && result.price) {
+      const name = result.name.trim();
+      const price = parseFloat(result.price);
+      const unit = result.unit || '斤';
+
+      area.innerHTML = `
+        <div class="camera-preview">
+          <img src="${document.getElementById('previewImg').src}">
+          <button class="btn-remove" onclick="clearCamera()">×</button>
+        </div>
+        <div class="camera-result">
+          ✅ 识别成功：<strong>${name}</strong>，价格 <strong>¥${price}/${unit}</strong>
+          <br><span style="color:#888;font-size:12px">点击下方"使用结果"自动填入表单</span>
+          <button style="margin-top:8px;width:100%;padding:8px;background:#667eea;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" onclick="applyResult('${name}',${price},'${unit}')">使用结果 →</button>
+        </div>`;
+    } else {
+      throw new Error('未能从照片中识别出商品信息，请手动输入');
+    }
+
+  } catch(err) {
+    area.innerHTML = `
+      <div class="camera-preview">
+        <img src="${document.getElementById('previewImg').src}">
+        <button class="btn-remove" onclick="clearCamera()">×</button>
+      </div>
+      <div class="camera-error">❌ 识别失败：${err.message}<br><span style="font-size:12px">请手动输入价格信息</span></div>`;
+  }
+}
+
+function applyResult(name, price, unit) {
+  document.getElementById('nameInput').value = name;
+  document.getElementById('priceInput').value = price;
+
+  // Select unit
+  const chips = document.querySelectorAll('.unit-chip');
+  chips.forEach(c => {
+    c.classList.remove('selected');
+    if (c.textContent.trim() === unit) c.classList.add('selected');
+  });
+  currentUnit = unit;
+
+  showHistory(name);
+  clearCamera();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('priceInput').focus();
+}
+
+function compressAndEncode(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 // ============ Go ============
