@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MENZ 食材价格</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #f4f4f4; color: #222; }
+  .wrap { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
+
+  /* Top bar */
+  .topbar { background: #111; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar h1 { font-size: 16px; font-weight: 700; }
+  .topbar-btns { display: flex; gap: 8px; }
+  .topbar .btn { padding: 5px 10px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-green { background: #4caf50; color: #fff; }
+  .btn-red { background: #ef5350; color: #fff; }
+  .btn-blue { background: #2196f3; color: #fff; }
+
+  /* Stats */
+  .stats { background: #111; color: #fff; padding: 8px 16px 12px; display: flex; gap: 0; }
+  .stat { flex: 1; text-align: center; border-right: 1px solid #333; }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-size: 22px; font-weight: 800; }
+  .stat-lbl { font-size: 10px; opacity: 0.6; margin-top: 1px; }
+  .stat-lbl-cn { font-size: 11px; opacity: 0.8; margin-top: 1px; }
+
+  /* Market / Date */
+  .meta-row { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #eee; }
+  .meta-row select, .meta-row input { flex: 1; padding: 7px 10px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
+  .meta-row select:focus, .meta-row input:focus { outline: none; border-color: #111; }
+
+  /* Quick add */
+  .quick-bar { padding: 8px 12px; background: #fff; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #eee; }
+  .quick-chip { background: #f0f0f0; border: 1px solid #ddd; border-radius: 20px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .quick-chip:hover { background: #e0e0e0; }
+  .quick-chip:active { background: #111; color: #fff; border-color: #111; }
+
+  /* Form card */
+  .form-card { background: #fff; margin: 12px; border-radius: 14px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .form-row { margin-bottom: 10px; }
+  .form-row label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .form-row input, .form-row select { width: 100%; padding: 11px 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; transition: border-color 0.2s; }
+  .form-row input:focus { outline: none; border-color: #111; }
+  .form-row input.price { font-size: 28px; font-weight: 800; text-align: center; letter-spacing: 2px; padding: 14px; }
+  .form-row input.price:focus { border-color: #111; }
+  .price-wrap { position: relative; }
+  .price-wrap .yuan { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 700; color: #888; }
+  .price-wrap input { padding-left: 36px; }
+  .unit-row { display: flex; gap: 6px; }
+  .unit-chip { flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; transition: all 0.15s; background: #fafafa; }
+  .unit-chip.selected { border-color: #111; background: #111; color: #fff; }
+
+  /* Save btn */
+  .btn-save-main { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 6px; letter-spacing: 1px; }
+  .btn-save-main:active { background: #333; }
+
+  /* History */
+  .section-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px; }
+  .section-head h3 { font-size: 13px; color: #888; font-weight: 600; }
+  .section-head .count { background: #111; color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+
+  /* Record item */
+  .record { background: #fff; margin: 0 12px 6px; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 3px solid #ddd; transition: border-color 0.3s; }
+  .record:first-of-type { border-left-color: #4caf50; }
+  .record-icon { font-size: 22px; flex-shrink: 0; }
+  .record-info { flex: 1; min-width: 0; }
+  .record-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .record-meta { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .record-price { font-size: 20px; font-weight: 900; flex-shrink: 0; }
+  .record-price small { font-size: 12px; font-weight: 500; color: #888; }
+  .record-del { background: #ffebee; color: #ef5350; border: none; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; flex-shrink: 0; }
+
+  /* History inline (below form) */
+  .inline-history { margin-top: 8px; }
+  .hist-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #f5f5f5; border-radius: 6px; margin-bottom: 3px; font-size: 12px; }
+  .hist-date { color: #aaa; min-width: 38px; }
+  .hist-price { font-weight: 700; }
+  .hist-trend { margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px; }
+  .hist-trend.up { background: #ffebee; color: #ef5350; }
+  .hist-trend.down { background: #e8f5e9; color: #4caf50; }
+
+  /* Alert */
+  .alert { padding: 8px 10px; border-radius: 8px; margin: 0 12px 8px; font-size: 12px; display: flex; align-items: center; gap: 6px; background: #fff8e1; color: #f57f17; border-left: 3px solid #f9a825; }
+  .alert.good { background: #e8f5e9; color: #2e7d32; border-left-color: #4caf50; }
+
+  /* Empty */
+  .empty { text-align: center; padding: 40px 20px; color: #ccc; }
+  .empty-icon { font-size: 48px; margin-bottom: 8px; }
+  .empty p { font-size: 13px; }
+
+  /* Bottom padding */
+  .bottom-pad { height: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <h1>🥬 食材价格</h1>
+    <div class="topbar-btns">
+      <button class="topbar btn btn-blue" onclick="exportCSV()">📤 导出</button>
+      <button class="topbar btn btn-red" onclick="clearDay()">🗑 清空</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="statCount">0</div>
+      <div class="stat-lbl">条记录</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statItems">0</div>
+      <div class="stat-lbl">种食材</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statLast">--:--</div>
+      <div class="stat-lbl">最后录入</div>
+    </div>
+  </div>
+
+  <!-- Market / Date -->
+  <div class="meta-row">
+    <select id="market" onchange="savePref('market', this.value)">
+      <option value="同济市场">同济市场</option>
+      <option value="普君市场">普君市场</option>
+      <option value="华安市场">华安市场</option>
+      <option value="鸿起市场">鸿起市场</option>
+      <option value="南堤批发市场">南堤批发市场</option>
+      <option value="扶西批发市场">扶西批发市场</option>
+      <option value="超市">超市</option>
+      <option value="其他">其他</option>
+    </select>
+    <input type="date" id="date" onchange="renderList()">
+  </div>
+
+  <!-- Quick chips -->
+  <div class="quick-bar" id="quickBar"></div>
+
+  <!-- Form -->
+  <div class="form-card">
+    <div class="form-row">
+      <label>食材名称</label>
+      <input type="text" id="nameInput" placeholder="输入或选择上方快捷食材" list="nameList" autocomplete="off" autofocus>
+      <datalist id="nameList"></datalist>
+    </div>
+
+    <!-- Inline history -->
+    <div class="inline-history" id="inlineHistory"></div>
+
+    <div class="form-row">
+      <label>单价</label>
+      <div class="price-wrap">
+        <span class="yuan">¥</span>
+        <input type="number" id="priceInput" class="price" placeholder="0.00" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>单位</label>
+      <div class="unit-row">
+        <div class="unit-chip selected" onclick="selectUnit(this, '斤')">斤</div>
+        <div class="unit-chip" onclick="selectUnit(this, '公斤')">公斤</div>
+        <div class="unit-chip" onclick="selectUnit(this, '个')">个</div>
+        <div class="unit-chip" onclick="selectUnit(this, '包')">包</div>
+        <div class="unit-chip" onclick="selectUnit(this, '盒')">盒</div>
+        <div class="unit-chip" onclick="selectUnit(this, '袋')">袋</div>
+      </div>
+    </div>
+
+    <button class="btn-save-main" onclick="save()">✓ 保存</button>
+  </div>
+
+  <!-- Alert -->
+  <div id="alertArea"></div>
+
+  <!-- Record List -->
+  <div class="section-head">
+    <h3>📋 今日记录</h3>
+    <span class="count" id="listCount">0</span>
+  </div>
+  <div id="recordList"></div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<script>
+// ============ Master List ============
+const ALL_INGREDIENTS = [
+  '牛肉','牛腩','牛里脊','牛腱','牛霖','猪肉','排骨','五花肉','瘦肉','前肉',
+  '鸡肉','鸡腿','鸡胸','鸡翅','鸡爪','清远鸡',
+  '鸭肉','鸭腿',
+  '鱼肉','鲈鱼','草鱼','鲫鱼','桂花鱼','罗非鱼','皖鱼',
+  '虾','基围虾','河虾','蟹',
+  '腊肠','腊肉','火腿',
+  '土豆','番茄','西红柿','菜心','生菜','小白菜','大白菜','青瓜','黄瓜',
+  '茄子','豆角','四季豆','荷兰豆',
+  '豆腐','豆芽',
+  '洋葱','青椒','红椒','红萝卜','白萝卜','玉米',
+  '西兰花','花菜','芹菜','韭菜','菠菜','通菜','芥菜','娃娃菜','枸杞叶',
+  '香菇','金针菇','平菇','木耳',
+  '鸡蛋','鸭蛋','皮蛋',
+  '大米','面条','米粉','粉丝','河粉',
+  '支竹','腐竹','豆皮',
+  '梅菜','酸菜','榨菜','榄菜',
+  '花生油','调和油','芝麻油',
+  '盐','酱油','蚝油','糖','醋','料酒','生粉',
+  '豆瓣酱','辣椒酱','柱侯酱','沙茶酱'
+];
+
+// ============ State ============
+const DB_KEY = 'menz_price_v2';
+const PREF_KEY = 'menz_price_pref';
+let db = { records: [], history: {} };
+let currentUnit = '斤';
+let selectedDate = new Date().toISOString().split('T')[0];
+
+// ============ Init ============
+function init() {
+  loadDB();
+  loadPref();
+  document.getElementById('date').value = selectedDate;
+
+  // Build name list
+  const dl = document.getElementById('nameList');
+  dl.innerHTML = ALL_INGREDIENTS.map(i => `<option value="${i}">`).join('');
+
+  // Build quick chips
+  buildQuickChips();
+
+  // Name input → show history
+  document.getElementById('nameInput').addEventListener('input', debounce(showHistory, 250));
+
+  // Price enter → save
+  document.getElementById('priceInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+  });
+
+  // Name enter → focus price
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('priceInput').focus(); }
+  });
+
+  renderList();
+  updateStats();
+}
+
+function buildQuickChips() {
+  // Most common 15 items + recent 10 unique names
+  const recent = [...new Set(db.records.slice(0, 30).map(r => r.name))].slice(0, 10);
+  const common = ['牛肉','猪肉','排骨','鸡肉','土豆','番茄','菜心','生菜','豆腐','鸡蛋','青瓜','茄子','豆腐'];
+  const unique = [...new Set([...recent, ...common])].slice(0, 18);
+  const bar = document.getElementById('quickBar');
+  bar.innerHTML = unique.map(name =>
+    `<span class="quick-chip" onclick="quickAdd('${name}')">${name}</span>`
+  ).join('');
+}
+
+function quickAdd(name) {
+  document.getElementById('nameInput').value = name;
+  document.getElementById('priceInput').value = '';
+  document.getElementById('priceInput').focus();
+  showHistory(name);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============ History ============
+function showHistory(name) {
+  const area = document.getElementById('inlineHistory');
+  if (!name || !db.history[name]) { area.innerHTML = ''; return; }
+
+  const hist = db.history[name].slice(0, 5);
+  const latest = hist[0];
+  let html = '';
+  hist.forEach((r, i) => {
+    const days = Math.round((Date.now() - new Date(r.date).getTime()) / 86400000);
+    const dateStr = days === 0 ? '今天' : days === 1 ? '昨天' : `${days}天`;
+    let trend = '';
+    if (i < hist.length - 1) {
+      const next = hist[i + 1].price;
+      const diff = ((r.price - next) / next * 100).toFixed(0);
+      if (diff > 0) trend = `<span class="hist-trend up">↑${diff}%</span>`;
+      else if (diff < 0) trend = `<span class="hist-trend down">↓${Math.abs(diff)}%</span>`;
+    } else {
+      trend = '<span class="hist-trend" style="background:#eee;color:#888">首次</span>';
+    }
+    html += `<div class="hist-item">
+      <span class="hist-date">${dateStr}</span>
+      <span>${r.market}</span>
+      <span class="hist-price">¥${r.price}/${r.unit}</span>
+      ${trend}
+    </div>`;
+  });
+
+  // Alert if big change from last time
+  if (hist.length >= 2) {
+    const prev = hist[1];
+    const pct = ((latest.price - prev.price) / prev.price * 100).toFixed(0);
+    if (Math.abs(pct) >= 20) {
+      html = `<div class="alert">⚠️ 价格较${pct > 0 ? '上次上涨' : '下跌'} ${Math.abs(pct)}%，确认无误？</div>` + html;
+    }
+  }
+
+  area.innerHTML = html;
+}
+
+// ============ Save ============
+function save() {
+  const name = document.getElementById('nameInput').value.trim();
+  const price = parseFloat(document.getElementById('priceInput').value);
+  const market = document.getElementById('market').value;
+  const date = document.getElementById('date').value;
+
+  if (!name) { shake(document.getElementById('nameInput')); return; }
+  if (!price || price <= 0) { shake(document.getElementById('priceInput')); return; }
+
+  const record = {
+    id: Date.now(),
+    name, price, unit: currentUnit, market, date,
+    time: new Date().toTimeString().slice(0, 5)
+  };
+
+  db.records.unshift(record);
+
+  // History: one entry per name per day (latest price wins)
+  if (!db.history[name]) db.history[name] = [];
+  const existingToday = db.history[name].findIndex(r => r.date === date);
+  if (existingToday >= 0) db.history[name].splice(existingToday, 1);
+  db.history[name].unshift({ price, unit: currentUnit, date, market });
+  if (db.history[name].length > 30) db.history[name] = db.history[name].slice(0, 30);
+
+  saveDB();
+  renderList();
+  updateStats();
+  buildQuickChips();
+  showAlert(`✅ ${name} ¥${price}/${currentUnit} 已保存`, 'good');
+
+  // Reset form
+  document.getElementById('nameInput').value = '';
+  document.getElementById('priceInput').value = '';
+  document.getElementById('inlineHistory').innerHTML = '';
+  document.getElementById('nameInput').focus();
+
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function selectUnit(el, unit) {
+  currentUnit = unit;
+  document.querySelectorAll('.unit-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function shake(el) {
+  el.style.transition = 'none';
+  el.offsetHeight;
+  el.style.transition = 'transform 0.4s ease';
+  el.style.transform = 'translateX(-8px)';
+  setTimeout(() => el.style.transform = 'translateX(8px)', 100);
+  setTimeout(() => el.style.transform = 'translateX(-5px)', 200);
+  setTimeout(() => el.style.transform = 'translateX(0)', 300);
+  el.focus();
+}
+
+// ============ Render ============
+function renderList() {
+  const date = document.getElementById('date').value;
+  selectedDate = date;
+  const today = new Date().toISOString().split('T')[0];
+  const records = db.records.filter(r => r.date === date);
+  document.getElementById('listCount').textContent = records.length;
+
+  const list = document.getElementById('recordList');
+  if (records.length === 0) {
+    list.innerHTML = `<div class="empty">
+      <div class="empty-icon">🥬</div>
+      <p>${date === today ? '还没有录入记录' : '该日无记录'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = records.map(r => `
+    <div class="record">
+      <div class="record-icon">🥬</div>
+      <div class="record-info">
+        <div class="record-name">${r.name}</div>
+        <div class="record-meta">${r.market} · ${r.time}</div>
+      </div>
+      <div class="record-price">¥${r.price}<small>/${r.unit}</small></div>
+      <button class="record-del" onclick="delRecord(${r.id})">×</button>
+    </div>
+  `).join('');
+}
+
+function delRecord(id) {
+  db.records = db.records.filter(r => r.id !== id);
+  saveDB();
+  renderList();
+  updateStats();
+}
+
+function updateStats() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayRecords = db.records.filter(r => r.date === today);
+  const unique = [...new Set(todayRecords.map(r => r.name))];
+  document.getElementById('statCount').textContent = todayRecords.length;
+  document.getElementById('statItems').textContent = unique.length;
+  document.getElementById('statLast').textContent = todayRecords[0] ? todayRecords[0].time : '--:--';
+}
+
+function showAlert(msg, type = '') {
+  const area = document.getElementById('alertArea');
+  area.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+  setTimeout(() => area.innerHTML = '', 3000);
+}
+
+// ============ Prefs ============
+function savePref(key, val) {
+  const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+  p[key] = val;
+  localStorage.setItem(PREF_KEY, JSON.stringify(p));
+}
+
+function loadPref() {
+  const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+  if (p.market) document.getElementById('market').value = p.market;
+}
+
+// ============ Export ============
+function exportCSV() {
+  const date = document.getElementById('date').value;
+  const records = db.records.filter(r => r.date === date);
+  if (records.length === 0) { showAlert('当日暂无数据'); return; }
+  const csv = '\uFEFF食材,价格,单位,市场,日期,时间\n' +
+    records.map(r => `"${r.name}",${r.price},"${r.unit}","${r.market}","${r.date}","${r.time}"`).join('\n');
+  downloadFile(csv, `MENZ食材_${date}.csv`, 'text/csv;charset=utf-8');
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function clearDay() {
+  const date = document.getElementById('date').value;
+  const cnt = db.records.filter(r => r.date === date).length;
+  if (cnt === 0) { showAlert('当日无记录'); return; }
+  if (!confirm(`确定清空 ${date} 的 ${cnt} 条记录？`)) return;
+  db.records = db.records.filter(r => r.date !== date);
+  saveDB();
+  renderList();
+  updateStats();
+  showAlert('已清空', 'good');
+}
+
+// ============ DB ============
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function loadDB() {
+  const raw = localStorage.getItem(DB_KEY);
+  if (raw) try { db = JSON.parse(raw); } catch(e) {}
+  if (!db.history) db.history = {};
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ============ Go ============
+init();
+</script>
+</body>
+</html>
