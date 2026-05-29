@@ -29,9 +29,18 @@
   .stat-lbl-cn { font-size: 11px; opacity: 0.8; margin-top: 1px; }
 
   /* Market / Date */
-  .meta-row { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #eee; }
-  .meta-row select, .meta-row input { flex: 1; padding: 7px 10px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
+  .meta-row { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #eee; align-items: center; }
+  .meta-row select, .meta-row input { flex: 1; padding: 7px 10px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; min-width: 0; }
   .meta-row select:focus, .meta-row input:focus { outline: none; border-color: #111; }
+  .btn-new-market { padding: 7px 12px; border: 1.5px solid #111; border-radius: 8px; background: #111; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+  .btn-new-market:active { background: #444; }
+  .new-market-form { display: none; gap: 6px; padding: 8px 12px; background: #fff8e1; border-bottom: 1px solid #f9a825; align-items: center; }
+  .new-market-form.show { display: flex; }
+  .new-market-form input { flex: 1; padding: 8px 10px; border: 2px solid #f9a825; border-radius: 8px; font-size: 14px; background: #fff; }
+  .new-market-form input:focus { outline: none; border-color: #111; }
+  .btn-confirm { padding: 8px 14px; background: #f9a825; color: #111; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-confirm:active { background: #f57f17; color: #fff; }
+  .btn-cancel { padding: 8px 12px; background: #eee; color: #666; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
 
   /* Quick add */
   .quick-bar { padding: 8px 12px; background: #fff; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #eee; }
@@ -126,17 +135,16 @@
 
   <!-- Market / Date -->
   <div class="meta-row">
-    <select id="market" onchange="savePref('market', this.value)">
-      <option value="同济市场">同济市场</option>
-      <option value="普君市场">普君市场</option>
-      <option value="华安市场">华安市场</option>
-      <option value="鸿起市场">鸿起市场</option>
-      <option value="南堤批发市场">南堤批发市场</option>
-      <option value="扶西批发市场">扶西批发市场</option>
-      <option value="超市">超市</option>
-      <option value="其他">其他</option>
-    </select>
+    <select id="market" onchange="savePref('market', this.value)"></select>
+    <button class="btn-new-market" onclick="showNewMarket()">+ 新建</button>
     <input type="date" id="date" onchange="renderList()">
+  </div>
+
+  <!-- New market inline form -->
+  <div class="new-market-form" id="newMarketForm">
+    <input type="text" id="newMarketInput" placeholder="输入新市场名称，如：城南市场" onkeydown="if(event.key==='Enter')confirmNewMarket()">
+    <button class="btn-confirm" onclick="confirmNewMarket()">添加</button>
+    <button class="btn-cancel" onclick="hideNewMarket()">取消</button>
   </div>
 
   <!-- Quick chips -->
@@ -191,6 +199,11 @@
 
 <script>
 // ============ Master List ============
+const DEFAULT_MARKETS = [
+  '同济市场','普君市场','华安市场','鸿起市场',
+  '南堤批发市场','扶西批发市场','超市','其他'
+];
+
 const ALL_INGREDIENTS = [
   '牛肉','牛腩','牛里脊','牛腱','牛霖','猪肉','排骨','五花肉','瘦肉','前肉',
   '鸡肉','鸡腿','鸡胸','鸡翅','鸡爪','清远鸡',
@@ -216,6 +229,7 @@ const ALL_INGREDIENTS = [
 // ============ State ============
 const DB_KEY = 'menz_price_v2';
 const PREF_KEY = 'menz_price_pref';
+const MARKET_KEY = 'menz_price_markets';
 let db = { records: [], history: {} };
 let currentUnit = '斤';
 let selectedDate = new Date().toISOString().split('T')[0];
@@ -225,6 +239,9 @@ function init() {
   loadDB();
   loadPref();
   document.getElementById('date').value = selectedDate;
+
+  // Build market select
+  buildMarketSelect();
 
   // Build name list
   const dl = document.getElementById('nameList');
@@ -416,6 +433,56 @@ function showAlert(msg, type = '') {
   const area = document.getElementById('alertArea');
   area.innerHTML = `<div class="alert ${type}">${msg}</div>`;
   setTimeout(() => area.innerHTML = '', 3000);
+}
+
+// ============ Market ============
+function getAllMarkets() {
+  const saved = JSON.parse(localStorage.getItem(MARKET_KEY) || '[]');
+  return [...DEFAULT_MARKETS, ...saved];
+}
+
+function buildMarketSelect() {
+  const sel = document.getElementById('market');
+  const markets = getAllMarkets();
+  const saved = JSON.parse(localStorage.getItem(MARKET_KEY) || '[]');
+  sel.innerHTML = markets.map(m => `<option value="${m}">${m}</option>`).join('');
+  const pref = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+  if (pref.market && markets.includes(pref.market)) {
+    sel.value = pref.market;
+  }
+}
+
+function showNewMarket() {
+  document.getElementById('newMarketForm').classList.add('show');
+  document.getElementById('newMarketInput').value = '';
+  document.getElementById('newMarketInput').focus();
+}
+
+function hideNewMarket() {
+  document.getElementById('newMarketForm').classList.remove('show');
+  document.getElementById('newMarketInput').value = '';
+}
+
+function confirmNewMarket() {
+  const input = document.getElementById('newMarketInput');
+  const name = input.value.trim();
+  if (!name) { shake(input); return; }
+
+  const markets = getAllMarkets();
+  if (markets.includes(name)) {
+    showAlert('⚠️ 已存在：' + name);
+    return;
+  }
+
+  const saved = JSON.parse(localStorage.getItem(MARKET_KEY) || '[]');
+  saved.push(name);
+  localStorage.setItem(MARKET_KEY, JSON.stringify(saved));
+
+  buildMarketSelect();
+  document.getElementById('market').value = name;
+  savePref('market', name);
+  hideNewMarket();
+  showAlert('✅ 已添加：' + name, 'good');
 }
 
 // ============ Prefs ============
