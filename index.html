@@ -20,6 +20,11 @@
   .btn-red { background: #ef5350; color: #fff; }
   .btn-blue { background: #2196f3; color: #fff; }
 
+  /* Nav tabs */
+  .nav-tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
+  .nav-tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .nav-tab.active { color: #111; border-bottom-color: #111; }
+
   /* Stats */
   .stats { background: #111; color: #fff; padding: 8px 16px 12px; display: flex; gap: 0; }
   .stat { flex: 1; text-align: center; border-right: 1px solid #333; }
@@ -129,6 +134,13 @@
       <button class="topbar btn btn-blue" onclick="exportCSV()">📤 导出</button>
       <button class="topbar btn btn-red" onclick="clearDay()">🗑 清空</button>
     </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-tabs">
+    <div class="nav-tab active">📷 菜价录入</div>
+    <div class="nav-tab" onclick="location.href='menu.html'">🍽️ 菜单生成</div>
+    <div class="nav-tab" onclick="location.href='settings.html'">⚙️ 常数</div>
   </div>
 
   <!-- Stats -->
