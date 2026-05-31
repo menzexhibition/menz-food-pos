@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>MENZ AI菜单生成</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #f4f4f4; color: #222; }
+  .wrap { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
+
+  /* Top bar */
+  .topbar { background: #111; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar h1 { font-size: 16px; font-weight: 700; }
+  .topbar-btns { display: flex; gap: 8px; }
+  .topbar .btn { padding: 5px 10px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-green { background: #4caf50; color: #fff; }
+  .btn-red { background: #ef5350; color: #fff; }
+
+  /* Nav tabs */
+  .nav-tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
+  .nav-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .nav-tab.active { color: #111; border-bottom-color: #111; }
+
+  /* Summary cards */
+  .summary-row { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #eee; }
+  .summary-card { flex: 1; background: #f8f8f8; border-radius: 10px; padding: 8px; text-align: center; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .lbl { font-size: 10px; color: #888; margin-top: 2px; }
+
+  /* Section */
+  .section { background: #fff; margin: 10px 12px; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .section-head { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #fff; border-bottom: 1px solid #f0f0f0; user-select: none; }
+  .section-head h3 { font-size: 14px; font-weight: 700; color: #111; }
+
+  /* Form */
+  .form-body { padding: 14px; }
+  .row { margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { display: block; font-size: 12px; color: #888; font-weight: 600; margin-bottom: 5px; }
+  .row select, .row input { width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; background: #fafafa; }
+  .row select:focus, .row input:focus { outline: none; border-color: #111; background: #fff; }
+
+  /* Price list */
+  .price-list { display: flex; flex-direction: column; gap: 6px; }
+  .price-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: #f8f8f8; border-radius: 8px; font-size: 13px; }
+  .price-item .name { font-weight: 600; }
+  .price-item .price { font-weight: 800; color: #111; }
+
+  /* Generate button */
+  .btn-generate { width: 100%; padding: 16px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; margin: 12px; letter-spacing: 1px; }
+  .btn-generate:active { opacity: 0.85; }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Loading */
+  .loading-area { text-align: center; padding: 40px 20px; }
+  .loading-area .spinner { display: inline-block; width: 40px; height: 40px; border: 3px solid #eee; border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .loading-area p { margin-top: 12px; font-size: 14px; color: #888; }
+
+  /* Menu result */
+  .menu-result { padding: 0 12px 12px; }
+  .menu-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-bottom: 10px; }
+  .menu-badge.A { background: #fff3e0; color: #e65100; }
+  .menu-badge.B { background: #e3f2fd; color: #1565c0; }
+  .menu-badge.C { background: #e8f5e9; color: #2e7d32; }
+  .menu-badge.D { background: #fce4ec; color: #c2185b; }
+  .menu-badge.E { background: #f3e5f5; color: #7b1fa2; }
+
+  .menu-dish { background: #fff; margin-bottom: 8px; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #ddd; }
+  .menu-dish.A { border-left-color: #e65100; }
+  .menu-dish.B { border-left-color: #1565c0; }
+  .menu-dish.C { border-left-color: #2e7d32; }
+  .menu-dish.D { border-left-color: #c2185b; }
+  .menu-dish.E { border-left-color: #7b1fa2; }
+
+  .dish-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .dish-meta { font-size: 12px; color: #888; }
+  .dish-meta span { margin-right: 12px; }
+  .dish-batches { font-size: 12px; color: #888; margin-top: 4px; }
+  .dish-batches strong { color: #111; font-size: 15px; }
+
+  .menu-total { background: #111; color: #fff; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .menu-total h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.8; }
+  .total-row { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+  .total-row .val { font-weight: 700; }
+
+  .btn-confirm { width: 100%; padding: 14px; background: #4caf50; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; }
+  .btn-confirm:active { background: #388e3c; }
+  .btn-retry { width: 100%; padding: 12px; background: #fff; color: #111; border: 2px solid #111; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+
+  /* Alert */
+  .alert { padding: 8px 12px; border-radius: 8px; margin: 0 12px 8px; font-size: 12px; background: #fff8e1; color: #f57f17; border-left: 3px solid #f9a825; }
+  .alert.good { background: #e8f5e9; color: #2e7d32; border-left-color: #4caf50; }
+
+  /* No prices warning */
+  .no-prices { padding: 20px; text-align: center; color: #aaa; font-size: 13px; }
+  .no-prices a { color: #f59e0b; text-decoration: none; font-weight: 700; }
+
+  /* Saved menu */
+  .saved-banner { background: linear-gradient(135deg, #4caf50, #2e7d32); color: #fff; padding: 10px 14px; border-radius: 10px; margin: 0 12px 10px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .saved-banner button { background: rgba(255,255,255,0.2); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .bottom-pad { height: 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <h1>🍽️ AI菜单生成</h1>
+    <div class="topbar-btns">
+      <button class="btn btn-green" onclick="location.href='settings.html'">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-tabs">
+    <div class="nav-tab" onclick="location.href='index.html'">📷 菜价录入</div>
+    <div class="nav-tab active">🍽️ 菜单生成</div>
+    <div class="nav-tab" onclick="location.href='settings.html'">⚙️ 常数设置</div>
+  </div>
+
+  <!-- Saved menu banner -->
+  <div id="savedBanner" style="display:none; padding: 0 12px; margin-top: 10px;">
+    <div class="saved-banner">
+      <span id="savedInfo">✅ 今日已有确认菜单</span>
+      <button onclick="viewSavedMenu()">查看</button>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="val" id="cardBudget">¥1000</div>
+      <div class="lbl">采购预算</div>
+    </div>
+    <div class="summary-card">
+      <div class="val" id="cardTarget">111人</div>
+      <div class="lbl">预计客数</div>
+    </div>
+    <div class="summary-card">
+      <div class="val" id="cardA">2道</div>
+      <div class="lbl">A档</div>
+    </div>
+    <div class="summary-card">
+      <div class="val" id="cardTotal">18道</div>
+      <div class="lbl">总菜品</div>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="section">
+    <div class="section-head" style="cursor:default; border-bottom:none;">
+      <h3>🎯 生成参数</h3>
+    </div>
+    <div class="form-body">
+      <div class="row">
+        <label>选择餐次</label>
+        <select id="mealType" onchange="updateSummary()">
+          <option value="lunch">午餐</option>
+          <option value="dinner">晚餐</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>今日天气</label>
+        <select id="weather">
+          <option value="sunny">☀️ 晴天</option>
+          <option value="cloudy">⛅ 多云</option>
+          <option value="rainy">🌧️ 下雨</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's prices -->
+  <div class="section">
+    <div class="section-head" style="cursor:default; border-bottom:none;">
+      <h3>📋 今日菜价（来自录入数据）</h3>
+    </div>
+    <div class="form-body">
+      <div id="priceArea"></div>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div id="alertArea"></div>
+
+  <!-- Generate button -->
+  <button class="btn-generate" id="genBtn" onclick="generateMenu()">
+    ✨ AI生成今日菜单
+  </button>
+
+  <!-- Loading -->
+  <div id="loadingArea" style="display:none; padding: 0 12px;">
+    <div class="loading-area">
+      <div class="spinner"></div>
+      <p>AI思考中，正在计算最佳菜单配比...</p>
+    </div>
+  </div>
+
+  <!-- Menu result -->
+  <div id="menuResult" style="display:none; padding: 0 12px;">
+    <div id="menuContent"></div>
+    <button class="btn-confirm" onclick="confirmMenu()">✅ 确认菜单并发送至厨房</button>
+    <button class="btn-retry" onclick="generateMenu()">🔄 重新生成</button>
+  </div>
+
+  <!-- History -->
+  <div class="section" style="margin-top:16px;">
+    <div class="section-head" style="cursor:default; border-bottom:none;">
+      <h3>📜 历史菜单</h3>
+    </div>
+    <div id="historyArea" class="form-body">
+      <div class="no-prices">暂无历史记录</div>
+    </div>
+  </div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<script>
+// ============ Config ============
+const API_KEY = 'sk-M8eGQbR78xqQgkZjZRE0Gyk89Pjzr0Ha8i6KLb6nrv29esjB';
+const API_BASE = 'https://api.mytokenland.com';
+const CONST_KEY = 'menz_const_v1';
+const PRICE_KEY = 'menz_price_v2';
+const MENU_KEY = 'menz_menu_v1';
+const HISTORY_KEY = 'menz_menu_history';
+
+// ============ Init ============
+function init() {
+  loadConst();
+  loadPrices();
+  updateSummary();
+  checkSavedMenu();
+  renderHistory();
+}
+
+function loadConst() {
+  const saved = localStorage.getItem(CONST_KEY);
+  if (saved) window._const = JSON.parse(saved);
+  else window._const = {};
+  // Use defaults
+  const defaults = { BUDGET_MEAL: 1000, PRICE_PER_HEAD: 18, A_COUNT_LUNCH: 2, A_COUNT_DINNER: 2, B_COUNT: 6, C_COUNT: 6, D_COUNT: 2, E_COUNT: 2, BATCH_SIZE: 10, GIFT_COUNT: 10, P_A: 15 };
+  for (const [k, v] of Object.entries(defaults)) {
+    if (window._const[k] === undefined) window._const[k] = v;
+  }
+}
+
+function loadPrices() {
+  const area = document.getElementById('priceArea');
+  const saved = localStorage.getItem(PRICE_KEY);
+  if (!saved) {
+    area.innerHTML = '<div class="no-prices"><a href="index.html">请先到「菜价录入」页面录入今日食材价格</a></div>';
+    return;
+  }
+
+  try {
+    const db = JSON.parse(saved);
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecords = db.records.filter(r => r.date === today);
+
+    if (todayRecords.length === 0) {
+      area.innerHTML = '<div class="no-prices"><a href="index.html">今日暂无录入数据，点击前往录入</a></div>';
+      return;
+    }
+
+    // Show unique ingredients with their latest prices
+    const latest = {};
+    todayRecords.forEach(r => {
+      latest[r.name] = { price: r.price, unit: r.unit };
+    });
+
+    window._todayPrices = latest;
+    const items = Object.entries(latest);
+    area.innerHTML = `<div class="price-list">${items.map(([name, d]) =>
+      `<div class="price-item"><span class="name">${name}</span><span class="price">¥${d.price}/${d.unit}</span></div>`
+    ).join('')}</div>`;
+  } catch(e) {
+    area.innerHTML = '<div class="no-prices">无法读取菜价数据</div>';
+  }
+}
+
+function updateSummary() {
+  const meal = document.getElementById('mealType').value;
+  const budget = window._const.BUDGET_MEAL || 1000;
+  const price = window._const.PRICE_PER_HEAD || 18;
+  const target = Math.round(budget / price);
+
+  const aCount = meal === 'lunch' ? (window._const.A_COUNT_LUNCH || 2) : (window._const.A_COUNT_DINNER || 2);
+  const bCount = window._const.B_COUNT || 6;
+  const cCount = window._const.C_COUNT || 6;
+  const dCount = window._const.D_COUNT || 2;
+  const eCount = window._const.E_COUNT || 2;
+  const total = aCount + bCount + cCount + dCount + eCount;
+
+  document.getElementById('cardBudget').textContent = `¥${budget}`;
+  document.getElementById('cardTarget').textContent = `${target}人`;
+  document.getElementById('cardA').textContent = `${aCount}道`;
+  document.getElementById('cardTotal').textContent = `${total}道`;
+}
+
+function checkSavedMenu() {
+  const today = new Date().toISOString().split('T')[0];
+  const saved = JSON.parse(localStorage.getItem(MENU_KEY) || '{}');
+  if (saved.date === today) {
+    document.getElementById('savedBanner').style.display = 'block';
+    document.getElementById('savedInfo').textContent = `✅ 今日已确认菜单（${saved.meal}，${saved.dishes.length}道菜）`;
+  }
+}
+
+function viewSavedMenu() {
+  const saved = JSON.parse(localStorage.getItem(MENU_KEY) || '{}');
+  renderMenu(saved);
+}
+
+function renderHistory() {
+  const area = document.getElementById('historyArea');
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  if (history.length === 0) {
+    area.innerHTML = '<div class="no-prices">暂无历史记录</div>';
+    return;
+  }
+  area.innerHTML = history.slice(0, 7).map(h => `
+    <div class="menu-dish" style="cursor:pointer" onclick='loadHistory("${h.date}")'>
+      <div class="dish-name">${h.date} · ${h.meal}</div>
+      <div class="dish-meta">${h.dishes.length}道菜 · 预算¥${h.budget} · ${h.customerCount}人</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(date) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const h = history.find(x => x.date === date);
+  if (h) renderMenu(h);
+}
+
+// ============ AI Menu Generation ============
+async function generateMenu() {
+  const btn = document.getElementById('genBtn');
+  const loading = document.getElementById('loadingArea');
+  const result = document.getElementById('menuResult');
+  btn.disabled = true;
+  loading.style.display = 'block';
+  result.style.display = 'none';
+
+  try {
+    const meal = document.getElementById('mealType').value;
+    const weather = document.getElementById('weather').value;
+    const budget = window._const.BUDGET_MEAL || 1000;
+    const price = window._const.PRICE_PER_HEAD || 18;
+    const customerCount = Math.round(budget / price);
+    const aCount = meal === 'lunch' ? (window._const.A_COUNT_LUNCH || 2) : (window._const.A_COUNT_DINNER || 2);
+    const bCount = window._const.B_COUNT || 6;
+    const cCount = window._const.C_COUNT || 6;
+    const dCount = window._const.D_COUNT || 2;
+    const eCount = window._const.E_COUNT || 2;
+    const pA = window._const.P_A || 15;
+    const batchSize = window._const.BATCH_SIZE || 10;
+    const giftCount = window._const.GIFT_COUNT || 10;
+
+    const prices = Object.entries(window._todayPrices || {}).map(([n, d]) => `${n} ¥${d.price}/${d.unit}`).join('\n');
+
+    const systemPrompt = `你是餐厅AI菜单规划助手。你非常擅长根据食材价格和客流量，为快餐店生成最优菜单。
+核心原则：
+1. 在固定预算内，选择最好吃、最有性价比的菜品组合
+2. A档（招牌特色菜）是营销工具，数量少但品质高
+3. B/C/D/E档必须能让顾客吃饱吃好
+4. 每批出10人份，全天刚好卖完，零库存
+5. 赠送10份不含A档，全部来自B/C/D/E档`;
+
+    const userPrompt = `请为以下快餐店生成今日菜单：
+
+【基础参数】
+- 餐次：${meal === 'lunch' ? '午餐' : '晚餐'}
+- 采购预算：¥${budget}
+- 预计客数：${customerCount}人
+- 人均：¥${price}
+- 今日天气：${weather === 'sunny' ? '晴天' : weather === 'cloudy' ? '多云' : '下雨'}
+
+【菜品结构要求】
+- A档（招牌特色菜，营销用）：${aCount}道，占预算${pA}%
+- B档（普通荤菜）：${bCount}道
+- C档（素菜）：${cCount}道
+- D档（蒸菜）：${dCount}道
+- E档（低价蒸菜）：${dCount}道
+- 每批份数：${batchSize}人份
+- 赠送：${giftCount}份（不含A档）
+
+【今日食材价格】（元/斤）
+${prices || '（暂无价格数据，请自行估算合理价格）'}
+
+【输出要求】
+请以JSON格式返回菜单，不要任何其他文字解释。格式如下：
+{
+  "a_dishes": [
+    {"name": "菜名", "batch_count": 数字, "cost_each": "¥X.X", "reason": "为什么选这道"}
+  ],
+  "b_dishes": [
+    {"name": "菜名", "batch_count": 数字, "cost_each": "¥X.X"}
+  ],
+  "c_dishes": [
+    {"name": "菜名", "batch_count": 数字, "cost_each": "¥X.X"}
+  ],
+  "d_dishes": [
+    {"name": "菜名", "batch_count": 数字, "cost_each": "¥X.X"}
+  ],
+  "e_dishes": [
+    {"name": "菜名", "batch_count": 数字, "cost_each": "¥X.X"}
+  ],
+  "summary": {
+    "total_budget": 数字,
+    "estimated_cost": 数字,
+    "budget_used_pct": 数字,
+    "customer_count": 数字
+  },
+  "gift_plan": "赠送${giftCount}份的菜品分配说明"
+}`;
+
+    const response = await fetch(`${API_BASE}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: [{ type: 'text', text: userPrompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`API错误 ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    // Parse JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI返回格式错误');
+
+    const menu = JSON.parse(jsonMatch[0]);
+    menu.meal = meal;
+    menu.budget = budget;
+    menu.customerCount = customerCount;
+    menu.prices = window._todayPrices || {};
+
+    window._generatedMenu = menu;
+    renderMenu(menu);
+
+  } catch(err) {
+    showAlert('❌ 生成失败：' + err.message, false);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderMenu(menu) {
+  const result = document.getElementById('menuResult');
+  const content = document.getElementById('menuContent');
+  result.style.display = 'block';
+
+  function dishCard(d, tier) {
+    const tierLabel = { A: '⭐ A档', B: '🥩 B档', C: '🥬 C档', D: '🫖 D档', E: '🫖 E档' }[tier];
+    return `
+      <div class="menu-dish ${tier}">
+        <div class="dish-name">${d.name}</div>
+        <div class="dish-meta"><span>${tierLabel}</span><span>¥${d.cost_each}/份</span>${d.reason ? `<span>${d.reason}</span>` : ''}</div>
+        <div class="dish-batches">需炒 <strong>${d.batch_count}</strong> 批 · ${d.batch_count * 10}人份</div>
+      </div>`;
+  }
+
+  const aHtml = (menu.a_dishes || []).map(d => dishCard(d, 'A')).join('');
+  const bHtml = (menu.b_dishes || []).map(d => dishCard(d, 'B')).join('');
+  const cHtml = (menu.c_dishes || []).map(d => dishCard(d, 'C')).join('');
+  const dHtml = (menu.d_dishes || []).map(d => dishCard(d, 'D')).join('');
+  const eHtml = (menu.e_dishes || []).map(d => dishCard(d, 'E')).join('');
+
+  const allDishes = [...(menu.a_dishes||[]), ...(menu.b_dishes||[]), ...(menu.c_dishes||[]), ...(menu.d_dishes||[]), ...(menu.e_dishes||[])];
+  const totalBatches = allDishes.reduce((s, d) => s + d.batch_count, 0);
+
+  content.innerHTML = `
+    ${aHtml ? `<div style="margin-bottom:12px">${aHtml}</div>` : ''}
+    ${bHtml ? `<div style="margin-bottom:12px">${bHtml}</div>` : ''}
+    ${cHtml ? `<div style="margin-bottom:12px">${cHtml}</div>` : ''}
+    ${dHtml ? `<div style="margin-bottom:12px">${dHtml}</div>` : ''}
+    ${eHtml ? `<div style="margin-bottom:12px">${eHtml}</div>` : ''}
+    <div class="menu-total">
+      <h4>📊 预算统计</h4>
+      <div class="total-row"><span>总采购预算</span><span class="val">¥${menu.summary?.total_budget || menu.budget}</span></div>
+      <div class="total-row"><span>预计食材成本</span><span class="val">¥${menu.summary?.estimated_cost || '—'}</span></div>
+      <div class="total-row"><span>预算使用率</span><span class="val">${menu.summary?.budget_used_pct || '—'}%</span></div>
+      <div class="total-row"><span>覆盖客数</span><span class="val">${menu.customerCount}人</span></div>
+      <div class="total-row"><span>总批次数</span><span class="val">${totalBatches}批</span></div>
+    </div>
+    ${menu.gift_plan ? `<div class="alert">🎁 赠送计划：${menu.gift_plan}</div>` : ''}
+  `;
+
+  result.scrollIntoView({ behavior: 'smooth' });
+}
+
+function confirmMenu() {
+  const menu = window._generatedMenu;
+  if (!menu) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const allDishes = [
+    ...(menu.a_dishes||[]).map(d => ({...d, tier: 'A'})),
+    ...(menu.b_dishes||[]).map(d => ({...d, tier: 'B'})),
+    ...(menu.c_dishes||[]).map(d => ({...d, tier: 'C'})),
+    ...(menu.d_dishes||[]).map(d => ({...d, tier: 'D'})),
+    ...(menu.e_dishes||[]).map(d => ({...d, tier: 'E'}))
+  ];
+
+  const saved = {
+    date: today,
+    meal: menu.meal,
+    budget: menu.budget,
+    customerCount: menu.customerCount,
+    dishes: allDishes,
+    summary: menu.summary,
+    gift_plan: menu.gift_plan
+  };
+
+  localStorage.setItem(MENU_KEY, JSON.stringify(saved));
+
+  // Add to history
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const existingIdx = history.findIndex(h => h.date === today && h.meal === menu.meal);
+  if (existingIdx >= 0) history.splice(existingIdx, 1);
+  history.unshift(saved);
+  if (history.length > 30) history.splice(30);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+
+  showAlert('✅ 菜单已确认！可发送至厨房iPad端。', true);
+  document.getElementById('savedBanner').style.display = 'block';
+  document.getElementById('savedInfo').textContent = `✅ 今日已确认菜单（${menu.meal === 'lunch' ? '午餐' : '晚餐'}，${allDishes.length}道菜）`;
+  renderHistory();
+}
+
+function showAlert(msg, good) {
+  const area = document.getElementById('alertArea');
+  area.innerHTML = `<div class="alert ${good ? 'good' : ''}">${msg}</div>`;
+  setTimeout(() => area.innerHTML = '', 4000);
+}
+
+// ============ Go ============
+init();
+</script>
+</body>
+</html>
