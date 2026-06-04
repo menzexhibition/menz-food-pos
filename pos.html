@@ -406,25 +406,34 @@ function getPeriod() {
   const h = now.getHours(), m = now.getMinutes();
   const totalMin = h * 60 + m;
 
-  // 午餐
-  if (totalMin >= 11 * 60 && totalMin < 11 * 60 + 30) return { name: '午餐优惠', bPrice: 15, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 11 * 60 + 30 && totalMin < 13 * 60) return { name: '午餐正价', bPrice: 18, aAvailable: true, aExtra: 5, tag: 'normal' };
-  if (totalMin >= 13 * 60 && totalMin < 13 * 60 + 30) return { name: '午餐折扣', bPrice: 16, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 13 * 60 + 30 && totalMin < 13 * 60 + 60) return { name: '午餐折扣', bPrice: 14, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 13 * 60 + 60 && totalMin < 14 * 60 + 30) return { name: '午餐折扣', bPrice: 12, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 14 * 60 + 30 && totalMin < 15 * 60) return { name: '午餐折扣', bPrice: 10, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 15 * 60) return { name: '午餐赠送', bPrice: 0, aAvailable: false, aExtra: 0, tag: 'free' };
+  // ===== 午餐 11:00 - 15:00 =====
+  if (totalMin >= 11 * 60 && totalMin < 15 * 60) {
+    if (totalMin < 11 * 60 + 30)   return { name: '午餐优惠', bPrice: 15, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 13 * 60)        return { name: '午餐正价', bPrice: 18, aAvailable: true,  aExtra: 5, tag: 'normal'  };
+    if (totalMin < 13 * 60 + 30)   return { name: '午餐折扣', bPrice: 16, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 13 * 60 + 60)   return { name: '午餐折扣', bPrice: 14, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 14 * 60 + 30)   return { name: '午餐折扣', bPrice: 12, aAvailable: false, aExtra: 0, tag: 'discount' };
+                                        return { name: '午餐折扣', bPrice: 10, aAvailable: false, aExtra: 0, tag: 'discount' };
+  }
 
-  // 晚餐
-  if (totalMin >= 17 * 60 && totalMin < 17 * 60 + 30) return { name: '晚餐优惠', bPrice: 15, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 17 * 60 + 30 && totalMin < 19 * 60) return { name: '晚餐正价', bPrice: 18, aAvailable: true, aExtra: 5, tag: 'normal' };
-  if (totalMin >= 19 * 60 && totalMin < 19 * 60 + 30) return { name: '晚餐折扣', bPrice: 16, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 19 * 60 + 30 && totalMin < 19 * 60 + 60) return { name: '晚餐折扣', bPrice: 14, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 19 * 60 + 60 && totalMin < 20 * 60 + 30) return { name: '晚餐折扣', bPrice: 12, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 20 * 60 + 30 && totalMin < 21 * 60) return { name: '晚餐折扣', bPrice: 10, aAvailable: false, aExtra: 0, tag: 'discount' };
-  if (totalMin >= 21 * 60) return { name: '晚餐赠送', bPrice: 0, aAvailable: false, aExtra: 0, tag: 'free' };
+  // ===== 晚餐 17:00 - 21:00 =====
+  if (totalMin >= 17 * 60 && totalMin < 21 * 60) {
+    if (totalMin < 17 * 60 + 30)   return { name: '晚餐优惠', bPrice: 15, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 19 * 60)        return { name: '晚餐正价', bPrice: 18, aAvailable: true,  aExtra: 5, tag: 'normal'  };
+    if (totalMin < 19 * 60 + 30)   return { name: '晚餐折扣', bPrice: 16, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 19 * 60 + 60)   return { name: '晚餐折扣', bPrice: 14, aAvailable: false, aExtra: 0, tag: 'discount' };
+    if (totalMin < 20 * 60 + 30)   return { name: '晚餐折扣', bPrice: 12, aAvailable: false, aExtra: 0, tag: 'discount' };
+                                        return { name: '晚餐折扣', bPrice: 10, aAvailable: false, aExtra: 0, tag: 'discount' };
+  }
 
-  // 非营业时间
+  // ===== 非营业或赠送 =====
+  if (totalMin >= 15 * 60 && totalMin < 17 * 60) {
+    return { name: '午休停业', bPrice: 0, aAvailable: false, aExtra: 0, tag: 'closed' };
+  }
+  if (totalMin >= 21 * 60 || totalMin < 11 * 60) {
+    return { name: '赠送时段', bPrice: 0, aAvailable: false, aExtra: 0, tag: 'free' };
+  }
+
   return { name: '非营业', bPrice: 18, aAvailable: false, aExtra: 0, tag: 'closed' };
 }
 
