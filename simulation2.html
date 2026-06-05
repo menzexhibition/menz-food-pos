@@ -738,8 +738,8 @@ function updateUI() {
     const diff = (660 - S.totalMin) * 60;
     cdTime.textContent = String(Math.floor(diff/3600)).padStart(2,'0') + ':' + String(Math.floor((diff%3600)/60)).padStart(2,'0') + ':' + String(diff%60).padStart(2,'0');
     cdRange.textContent = '11:00 午餐开业';
-  } else if (p.tag === 'closed') {
-    cdLabel.textContent = '距17:00晚餐还有';
+  } else    if (p.tag === 'closed') {
+    cdLabel.textContent = '剩余熟食免费送 · 17:00晚餐';
     const diff = (1020 - S.totalMin) * 60;
     cdTime.textContent = String(Math.floor(diff/3600)).padStart(2,'0') + ':' + String(Math.floor((diff%3600)/60)).padStart(2,'0') + ':' + String(diff%60).padStart(2,'0');
     cdRange.textContent = '17:00 晚餐开业';
@@ -901,7 +901,7 @@ function updateNarrative() {
   } else if (S.totalMin >= 900 && S.totalMin < 1020) {
     if (!S.phaseEvents.lunchEnd) {
       S.phaseEvents.lunchEnd = true;
-      text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余食材，决定晚餐菜量。`;
+      text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余熟食，<span class="green">全部赠送</span>，决定晚餐菜量。`;
     } else {
       const mins = S.totalMin - 900;
       if (mins < 60) text += `午休中。<span class="ai">AI</span>分析上午数据：午餐客单价¥${S.customers > 0 ? Math.round(S.revenue/S.customers) : 0}。`;
