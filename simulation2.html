@@ -949,10 +949,10 @@ function getPhaseColor(phase) {
 function updateUI() {
   const p = getPeriod(S.totalMin);
   const vel = getVelocity(S.totalMin);
-  const tick = S.tick;
+  const currentTick = S.tick;
 
   // 时钟
-  document.getElementById('clock').textContent = fmtClock(tick);
+  document.getElementById('clock').textContent = fmtClock(currentTick);
 
   // 时间轴高亮
   document.querySelectorAll('.hour-btn').forEach(el => {
@@ -1106,6 +1106,7 @@ function updateUI() {
 
   // 配菜进度（收银员面板）
   renderBaskets();
+}
 
 function updatePrepGrid() {
   const grid = document.getElementById('prepGrid');
