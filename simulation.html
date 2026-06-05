@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MENZ 快餐 · 全天运营模拟</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      background: #0a0a14;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 顶部时间轴 */
+    .timeline-bar {
+      background: #12121e;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid #1e1e3a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .tl-hour {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .tl-hour:hover { color: #e0e0e0; border-color: #333; }
+    .tl-hour.active { background: #e94560; color: #fff; font-weight: bold; }
+    .tl-hour.lunch { color: #f39c12; }
+    .tl-hour.dinner { color: #3498db; }
+    .tl-hour.closed { color: #555; }
+
+    .sim-clock {
+      margin-left: auto;
+      font-size: 28px;
+      font-weight: bold;
+      color: #e94560;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+    }
+
+    .speed-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #666;
+      margin-left: 16px;
+    }
+    .speed-ctrl button {
+      background: #1e1e3a;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      padding: 3px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .speed-ctrl button:hover { background: #2a2a4a; }
+    .speed-ctrl button.active { background: #e94560; border-color: #e94560; }
+
+    .play-btn {
+      background: #e94560;
+      border: none;
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      margin-left: 12px;
+    }
+    .play-btn:hover { background: #ff5a7a; }
+
+    /* 主布局 */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      padding: 2px;
+      height: calc(100vh - 70px);
+    }
+
+    .panel {
+      background: #12121e;
+      padding: 14px;
+      overflow-y: auto;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e1e3a;
+    }
+
+    /* 采购面板 */
+    .menu-section { margin-bottom: 16px; }
+    .menu-section h4 { font-size: 13px; color: #888; margin-bottom: 6px; }
+    .menu-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .menu-tag {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .tag-a { background: #6b21a8; color: #fff; }
+    .tag-b { background: #1d4ed8; color: #fff; }
+    .tag-c { background: #15803d; color: #fff; }
+    .tag-e { background: #374151; color: #aaa; }
+    .budget-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .budget-row .val { color: #f39c12; font-weight: bold; }
+
+    /* 收银面板 */
+    .pos-sim {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .pos-current {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .pos-price {
+      font-size: 36px;
+      font-weight: bold;
+      color: #e94560;
+      margin: 4px 0;
+    }
+    .pos-tier {
+      font-size: 13px;
+      color: #aaa;
+    }
+    .pos-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-top: 6px;
+    }
+    .s-normal { background: #e94560; color: #fff; }
+    .s-discount { background: #f39c12; color: #1a1a2e; }
+    .s-free { background: #27ae60; color: #fff; }
+    .s-closed { background: #374151; color: #888; }
+
+    .log-box {
+      background: #0f0f1a;
+      border-radius: 6px;
+      padding: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: monospace;
+    }
+    .log-entry { padding: 3px 0; border-bottom: 1px solid #1a1a2e; }
+    .log-entry .t { color: #555; }
+    .log-entry .msg { color: #aaa; }
+    .log-entry .ai { color: #e94560; font-weight: bold; }
+    .log-entry .ok { color: #27ae60; }
+    .log-entry .batch { color: #f39c12; font-weight: bold; }
+    .log-entry .price { color: #60a5fa; }
+
+    /* 客流曲线 */
+    .客流图 {
+      background: #0f0f1a;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .客流图 canvas { width: 100%; height: 80px; }
+    .客流-label { font-size: 11px; color: #555; margin-top: 4px; text-align: center; }
+
+    /* 后厨电视 */
+    .kitchen-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+    .f3-box {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 12px;
+      border: 2px solid #222;
+      transition: all 0.3s;
+    }
+    .f3-box.active { border-color: #e94560; background: #1a1a2e; }
+    .f3-box.cooking { border-color: #f39c12; }
+    .f3-box.idle { border-color: #222; opacity: 0.6; }
+    .f3-num {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .f3-dish {
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 4px;
+      min-height: 20px;
+    }
+    .f3-next {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .f3-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    .st-ready { background: #27ae60; color: #fff; }
+    .st-cooking { background: #f39c12; color: #1a1a2e; }
+    .st-idle { background: #333; color: #888; }
+    .f3-batch {
+      font-size: 10px;
+      color: #f39c12;
+      margin-top: 4px;
+    }
+
+    .a-control {
+      background: #1a1a2e;
+      border: 2px solid #6b21a8;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .a-control-header {
+      font-size: 12px;
+      color: #a855f7;
+      font-weight: bold;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .a-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #27ae60;
+    }
+    .a-indicator.paused { background: #e94560; }
+    .a-dishes { font-size: 13px; color: #ccc; margin-bottom: 4px; }
+    .a-batches { font-size: 11px; color: #888; }
+    .a-velocity { font-size: 11px; color: #555; margin-top: 4px; }
+
+    /* 前台广告 */
+    .display-screen {
+      background: #0a0a14;
+      border: 2px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .display-brand {
+      font-size: 14px;
+      color: #555;
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+    }
+    .display-menu {
+      background: #12121e;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .display-menu-title { font-size: 12px; color: #555; margin-bottom: 6px; }
+    .display-dishes { font-size: 13px; color: #aaa; line-height: 1.8; }
+
+    .display-price {
+      font-size: 42px;
+      font-weight: bold;
+      color: #fff;
+      margin: 10px 0;
+    }
+    .display-price.discount { color: #f39c12; }
+    .display-price.free { color: #27ae60; }
+    .display-save {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 16px;
+    }
+
+    .display-countdown {
+      background: #12121e;
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 10px 0;
+    }
+    .display-countdown-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .display-countdown-time {
+      font-size: 36px;
+      font-weight: bold;
+      color: #e94560;
+      font-variant-numeric: tabular-nums;
+    }
+    .display-countdown-range {
+      font-size: 11px;
+      color: #555;
+      margin-top: 4px;
+    }
+    .display-next {
+      font-size: 13px;
+      color: #666;
+      margin-top: 10px;
+    }
+    .display-next span { color: #f39c12; font-weight: bold; }
+
+    /* 事件日志侧边 */
+    .event-panel {
+      grid-column: 1 / -1;
+      background: #12121e;
+      padding: 12px 16px;
+      border-top: 2px solid #1e1e3a;
+      display: flex;
+      gap: 20px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .event-group { min-width: 200px; }
+    .event-group-title { color: #555; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .event-item { padding: 2px 0; color: #888; }
+    .event-item.now { color: #e94560; font-weight: bold; }
+    .event-item .time { color: #444; margin-right: 6px; }
+
+    /* 叙述文字 */
+    .narrative {
+      grid-column: 1 / -1;
+      background: #0f0f1a;
+      border-left: 3px solid #e94560;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #aaa;
+      line-height: 1.6;
+      border-radius: 0 6px 6px 0;
+    }
+    .narrative .highlight { color: #f39c12; font-weight: bold; }
+    .narrative .ai { color: #e94560; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="timeline-bar">
+  <span style="font-size:12px;color:#555;">快速跳转：</span>
+  <span class="tl-hour closed" data-h="9">09:00</span>
+  <span class="tl-hour closed" data-h="10">10:00</span>
+  <span class="tl-hour lunch" data-h="11">11:00</span>
+  <span class="tl-hour lunch" data-h="12">12:00</span>
+  <span class="tl-hour lunch" data-h="13">13:00</span>
+  <span class="tl-hour closed" data-h="14">14:00</span>
+  <span class="tl-hour closed" data-h="15">15:00</span>
+  <span class="tl-hour closed" data-h="16">16:00</span>
+  <span class="tl-hour dinner" data-h="17">17:00</span>
+  <span class="tl-hour dinner" data-h="18">18:00</span>
+  <span class="tl-hour dinner" data-h="19">19:00</span>
+  <span class="tl-hour dinner" data-h="20">20:00</span>
+  <span class="tl-hour dinner" data-h="21">21:00</span>
+
+  <div class="sim-clock" id="clock">11:00:00</div>
+
+  <div class="speed-ctrl">
+    <span>速度：</span>
+    <button class="active" onclick="setSpeed(1)" id="sp1">1x</button>
+    <button onclick="setSpeed(3)" id="sp3">3x</button>
+    <button onclick="setSpeed(10)" id="sp10">10x</button>
+    <button onclick="setSpeed(30)" id="sp30">30x</button>
+  </div>
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ 开始</button>
+</div>
+
+<div class="main">
+
+  <!-- 左列：采购 + 收银 -->
+  <div class="panel">
+    <div class="panel-title">① 食材采购系统</div>
+
+    <div class="menu-section">
+      <h4>A档 招牌菜（每天2道）</h4>
+      <div class="menu-tags">
+        <span class="menu-tag tag-a">姜葱牛肉</span>
+        <span class="menu-tag tag-a">清蒸鲈鱼</span>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <h4>B档 大荤（4道自选）</h4>
+      <div class="menu-tags">
+        <span class="menu-tag tag-b">洋葱牛肉</span>
+        <span class="menu-tag tag-b">糖醋里脊</span>
+        <span class="menu-tag tag-b">咕噜肉</span>
+        <span class="menu-tag tag-b">啫啫滑鸡</span>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <h4>C档 半荤（4道）</h4>
+      <div class="menu-tags">
+        <span class="menu-tag tag-c">番茄炒蛋</span>
+        <span class="menu-tag tag-c">苦瓜炒蛋</span>
+        <span class="menu-tag tag-c">蒜蓉菜心</span>
+        <span class="menu-tag tag-c">四季豆肉末</span>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <h4>E档 免费汤饭</h4>
+      <div class="menu-tags">
+        <span class="menu-tag tag-e">例汤 + 白饭（不限量）</span>
+      </div>
+    </div>
+
+    <div class="budget-row">
+      <span>今日采购预算</span>
+      <span class="val">¥2,000</span>
+    </div>
+    <div class="budget-row">
+      <span>预计供餐份数</span>
+      <span class="val">约 120-150 人份</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">② 收银系统（中控）</div>
+
+    <div class="pos-sim">
+      <div class="pos-current" id="posPeriod">午餐正价 · 11:30-13:00</div>
+      <div class="pos-price" id="posPrice">¥18</div>
+      <div class="pos-tier" id="posTier">B档 / B+A档（+¥5）</div>
+      <span class="pos-status s-normal" id="posStatus">正价时段</span>
+    </div>
+
+    <div class="客流图">
+      <canvas id="客流Canvas"></canvas>
+      <div class="客流-label">客流密度（蓝色越高 = 人越多）</div>
+    </div>
+
+    <div class="panel-title" style="margin-top:12px;">实时交易日志</div>
+    <div class="log-box" id="logBox">
+      <div class="log-entry"><span class="t">--:--:--</span> <span class="msg">等待开始...</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">③ 后厨电视（F3 指令）</div>
+
+    <div class="a-control" id="aControl">
+      <div class="a-control-header">
+        <div class="a-indicator" id="aIndicator"></div>
+        A档出菜控制
+        <span id="aMode" style="font-size:11px;color:#888;font-weight:normal;">（正等待客流数据）</span>
+      </div>
+      <div class="a-dishes" id="aDishes">姜葱牛肉 / 清蒸鲈鱼</div>
+      <div class="a-batches" id="aBatches">已投放：0 批 · 剩余：0 批</div>
+      <div class="a-velocity" id="aVelocity">买单速度：-- 人/5分钟</div>
+    </div>
+
+    <div class="kitchen-grid" id="kitchenGrid">
+      <div class="f3-box" id="f3-0">
+        <div class="f3-num">F3 一号机</div>
+        <div class="f3-dish" id="f3dish0">—</div>
+        <div class="f3-next" id="f3next0">等待指令...</div>
+        <span class="f3-status st-idle" id="f3st0">空闲</span>
+      </div>
+      <div class="f3-box" id="f3-1">
+        <div class="f3-num">F3 二号机</div>
+        <div class="f3-dish" id="f3dish1">—</div>
+        <div class="f3-next" id="f3next1">等待指令...</div>
+        <span class="f3-status st-idle" id="f3st1">空闲</span>
+      </div>
+      <div class="f3-box" id="f3-2">
+        <div class="f3-num">F3 三号机</div>
+        <div class="f3-dish" id="f3dish2">—</div>
+        <div class="f3-next" id="f3next2">等待指令...</div>
+        <span class="f3-status st-idle" id="f3st2">空闲</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">④ 前台广告大屏</div>
+
+    <div class="display-screen" id="displayScreen">
+      <div class="display-brand">M E N Z  快 餐</div>
+
+      <div class="display-menu">
+        <div class="display-menu-title">今日菜品</div>
+        <div class="display-dishes" id="displayMenu">
+          主菜：洋葱牛肉 / 糖醋里脊 / 咕噜肉 / 啫啫滑鸡<br>
+          半荤：番茄炒蛋 / 苦瓜炒蛋 / 蒜蓉菜心 / 四季豆肉末<br>
+          <span style="color:#a855f7;">招牌：A档 · 姜葱牛肉 / 清蒸鲈鱼</span>
+        </div>
+      </div>
+
+      <div class="display-price" id="displayPrice">¥18</div>
+      <div class="display-save" id="displaySave"></div>
+
+      <div class="display-countdown" id="displayCountdown">
+        <div class="display-countdown-label" id="countdownLabel">距全场赠送还有</div>
+        <div class="display-countdown-time" id="countdownTime">03:30:00</div>
+        <div class="display-countdown-range" id="countdownRange">20:00 → 21:00</div>
+      </div>
+
+      <div class="display-next" id="displayNext">下一档 <span>¥16</span> 约 13:00</div>
+    </div>
+  </div>
+
+  <div class="narrative" id="narrative">
+    <span class="highlight">等待开始模拟...</span> 系统各模块就位，等待启动。
+  </div>
+
+  <div class="event-panel" id="eventPanel">
+    <div class="event-group">
+      <div class="event-group-title">午餐主要事件</div>
+      <div class="event-item" data-t="660"><span class="time">11:00</span> 开业，B档¥15优惠时段开始</div>
+      <div class="event-item" data-t="690"><span class="time">11:30</span> 正价时段开始，A档+¥5可购</div>
+      <div class="event-item" data-t="780"><span class="time">13:00</span> 折扣时段，¥16</div>
+      <div class="event-item" data-t="810"><span class="time">13:30</span> ¥14折扣</div>
+      <div class="event-item" data-t="870"><span class="time">14:30</span> ¥10折扣</div>
+      <div class="event-item" data-t="900"><span class="time">15:00</span> 午休停业</div>
+    </div>
+    <div class="event-group">
+      <div class="event-group-title">晚餐主要事件</div>
+      <div class="event-item" data-t="1020"><span class="time">17:00</span> 晚餐开业，¥15优惠</div>
+      <div class="event-item" data-t="1050"><span class="time">17:30</span> 晚餐正价，A档+¥5</div>
+      <div class="event-item" data-t="1140"><span class="time">19:00</span> 折扣¥16</div>
+      <div class="event-item" data-t="1170"><span class="time">19:30</span> ¥14折扣</div>
+      <div class="event-item" data-t="1230"><span class="time">20:30</span> ¥10折扣</div>
+      <div class="event-item" data-t="1260"><span class="time">21:00</span> 全场赠送时段</div>
+    </div>
+    <div class="event-group">
+      <div class="event-group-title">AI决策事件</div>
+      <div class="event-item" id="ai-event-1"><span class="time">--:--</span> AI检测客流上升</div>
+      <div class="event-item" id="ai-event-2"><span class="time">--:--</span> AI下达A档投放指令</div>
+      <div class="event-item" id="ai-event-3"><span class="time">--:--</span> AI检测客流减缓</div>
+      <div class="event-item" id="ai-event-4"><span class="time">--:--</span> AI暂停A档投放</div>
+      <div class="event-item" id="ai-event-5"><span class="time">--:--</span> AI下达收尾指令</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ====== 模拟状态 ======
+const MENU = {
+  a: ['姜葱牛肉', '清蒸鲈鱼'],
+  b: ['洋葱牛肉', '糖醋里脊', '咕噜肉', '啫啫滑鸡'],
+  c: ['番茄炒蛋', '苦瓜炒蛋', '蒜蓉菜心', '四季豆肉末']
+};
+
+// 时间换算：分钟从0:00
+function toMin(h, m) { return h * 60 + m; }
+
+// 午餐时段
+const PERIODS_LUNCH = [
+  { start: toMin(9,0),  end: toMin(11,0),  name: '午休停业',   bPrice: 0,  aAvailable: false, tag: 'closed' },
+  { start: toMin(11,0), end: toMin(11,30), name: '午餐优惠',   bPrice: 15, aAvailable: false, tag: 'discount' },
+  { start: toMin(11,30),end: toMin(13,0), name: '午餐正价',   bPrice: 18, aAvailable: true,  tag: 'normal' },
+  { start: toMin(13,0), end: toMin(13,30), name: '午餐折扣',   bPrice: 16, aAvailable: false, tag: 'discount' },
+  { start: toMin(13,30),end: toMin(14,0), name: '午餐折扣',   bPrice: 14, aAvailable: false, tag: 'discount' },
+  { start: toMin(14,0), end: toMin(14,30), name: '午餐折扣',   bPrice: 12, aAvailable: false, tag: 'discount' },
+  { start: toMin(14,30),end: toMin(15,0), name: '午餐折扣',   bPrice: 10, aAvailable: false, tag: 'discount' },
+  { start: toMin(15,0), end: toMin(17,0), name: '午休停业',   bPrice: 0,  aAvailable: false, tag: 'closed' },
+];
+
+// 晚餐时段
+const PERIODS_DINNER = [
+  { start: toMin(17,0), end: toMin(17,30), name: '晚餐优惠',   bPrice: 15, aAvailable: false, tag: 'discount' },
+  { start: toMin(17,30),end: toMin(19,0), name: '晚餐正价',   bPrice: 18, aAvailable: true,  tag: 'normal' },
+  { start: toMin(19,0), end: toMin(19,30), name: '晚餐折扣',   bPrice: 16, aAvailable: false, tag: 'discount' },
+  { start: toMin(19,30),end: toMin(20,0), name: '晚餐折扣',   bPrice: 14, aAvailable: false, tag: 'discount' },
+  { start: toMin(20,0), end: toMin(20,30), name: '晚餐折扣',   bPrice: 12, aAvailable: false, tag: 'discount' },
+  { start: toMin(20,30),end: toMin(21,0), name: '晚餐折扣',   bPrice: 10, aAvailable: false, tag: 'discount' },
+  { start: toMin(21,0), end: toMin(27,0), name: '晚餐赠送',   bPrice: 0,  aAvailable: false, tag: 'free' },
+];
+
+function getPeriod(totalMin) {
+  for (const p of PERIODS_LUNCH) if (totalMin >= p.start && totalMin < p.end) return p;
+  for (const p of PERIODS_DINNER) if (totalMin >= p.start && totalMin < p.end) return p;
+  return { name: '非营业', bPrice: 0, aAvailable: false, tag: 'closed' };
+}
+
+// 客流配置：每5分钟来多少人
+function getVelocity(totalMin) {
+  const m = totalMin % (24 * 60);
+  // 午餐
+  if (m >= toMin(11,0) && m < toMin(11,30)) return 6;  // 早到优惠，人多
+  if (m >= toMin(11,30) && m < toMin(12,0)) return 12; // 刚正价，人爆满
+  if (m >= toMin(12,0) && m < toMin(12,30)) return 10; // 高峰
+  if (m >= toMin(12,30) && m < toMin(13,0)) return 8;  // 开始下降
+  if (m >= toMin(13,0) && m < toMin(13,30)) return 5;  // 折扣时段，人少
+  if (m >= toMin(13,30) && m < toMin(14,0)) return 3;  // 人更少
+  if (m >= toMin(14,0) && m < toMin(15,0)) return 2;  // 快收尾
+  // 晚餐
+  if (m >= toMin(17,0) && m < toMin(17,30)) return 8;  // 优惠时段
+  if (m >= toMin(17,30) && m < toMin(18,0)) return 14; // 晚餐高峰
+  if (m >= toMin(18,0) && m < toMin(18,30)) return 12; // 持续高峰
+  if (m >= toMin(18,30) && m < toMin(19,0)) return 9;  // 略降
+  if (m >= toMin(19,0) && m < toMin(19,30)) return 6;  // 折扣时段
+  if (m >= toMin(19,30) && m < toMin(20,0)) return 4;
+  if (m >= toMin(20,0) && m < toMin(21,0)) return 2;  // 尾声
+  return 0;
+}
+
+// ====== 模拟引擎 ======
+let sim = {
+  running: false,
+  tick: 0,       // 当前模拟分钟（从11:00 = 0开始）
+  speed: 1,      // 模拟倍速
+  totalMin: toMin(11, 0), // 真实分钟计数
+  customers: 0,
+  totalRevenue: 0,
+  aBatchesOut: 0,
+  aPaused: false,
+  f3State: [
+    { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+    { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+    { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+  ],
+  logEntries: [],
+  aiEvents: { peakDetected: false, aReleased: false, slowdownDetected: false, aPaused: false, closed: false },
+  eventDone: { e1: false, e2: false, e3: false, e4: false, e5: false },
+  lastPeriod: null,
+  minuteCount: 0,
+  recentTx: [],  // 最近N分钟的交易数
+};
+
+function fmt(tick) {
+  const total = toMin(11, 0) + tick;
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00';
+}
+
+function fmtFull(totalMin) {
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = totalMin % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function addLog(msg, type) {
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  const t = fmt(sim.tick);
+  div.innerHTML = `<span class="t">${t}</span> <span class="${type || 'msg'}">${msg}</span>`;
+  box.prepend(div);
+  sim.logEntries.push({ t, msg, type });
+  if (box.children.length > 50) box.lastChild.remove();
+}
+
+function addNarrative(text) {
+  document.getElementById('narrative').innerHTML = text;
+}
+
+function updateNarrative() {
+  const t = sim.tick;
+  const total = toMin(11, 0) + t;
+  const p = getPeriod(total);
+  const vel = getVelocity(total);
+  const aPaused = sim.aPaused;
+
+  if (total >= toMin(11,0) && total < toMin(11,30)) {
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 午餐优惠时段（¥15）开始。<br>AI分析：早到客流速度 ${vel}人/5分钟，人流逐步增加，A档暂不开放。`);
+  } else if (total >= toMin(11,30) && total < toMin(12,0)) {
+    if (!sim.aiEvents.peakDetected) {
+      sim.aiEvents.peakDetected = true;
+      document.getElementById('ai-event-1').classList.add('now');
+      document.getElementById('ai-event-1').querySelector('.time').textContent = fmtFull(total);
+    }
+    if (!sim.aiEvents.aReleased) {
+      sim.aiEvents.aReleased = true;
+      document.getElementById('ai-event-2').classList.add('now');
+      document.getElementById('ai-event-2').querySelector('.time').textContent = fmtFull(total);
+    }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 正价时段开始。<br><span class="ai">AI决策：</span>买单速度 ${vel}人/5分钟（高峰），立即下达A档第一批投放指令。<br>后厨：姜葱牛肉入F3一号机，开始烹饪。`);
+  } else if (total >= toMin(12,0) && total < toMin(13,0)) {
+    const remaining = Math.max(0, 10 - sim.aBatchesOut);
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 午餐高峰持续。<br><span class="ai">AI监控：</span>买单速度 ${vel}人/5分钟，A档已投放 ${sim.aBatchesOut} 批，剩余 ${remaining} 批，继续补菜中。`);
+  } else if (total >= toMin(13,0) && total < toMin(14,0)) {
+    if (!sim.aiEvents.slowdownDetected) {
+      sim.aiEvents.slowdownDetected = true;
+      document.getElementById('ai-event-3').classList.add('now');
+      document.getElementById('ai-event-3').querySelector('.time').textContent = fmtFull(total);
+    }
+    if (!sim.aiEvents.aPaused) {
+      sim.aiEvents.aPaused = true;
+      document.getElementById('ai-event-4').classList.add('now');
+      document.getElementById('ai-event-4').querySelector('.time').textContent = fmtFull(total);
+    }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 折扣时段开始（¥${p.bPrice}），客流减缓。<br><span class="ai">AI决策：</span>买单速度 ${vel}人/5分钟，暂停A档新批投放，等待客流回升。A档余量按折扣价继续消耗。`);
+  } else if (total >= toMin(14,0) && total < toMin(15,0)) {
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 午餐收尾，客流稀疏。<br><span class="ai">AI决策：</span>买单速度 ${vel}人/5分钟，维持A档暂停。F3切换为C档半荤补充。`);
+  } else if (total >= toMin(15,0) && total < toMin(17,0)) {
+    if (!sim.aiEvents.closed) {
+      sim.aiEvents.closed = true;
+      document.getElementById('ai-event-5').classList.add('now');
+      document.getElementById('ai-event-5').querySelector('.time').textContent = fmtFull(total);
+    }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 午休停业。<br>AI统计：午餐共服务 <span class="highlight">${sim.customers} 人</span>，收入 <span class="highlight">¥${sim.totalRevenue}</span>，A档投放 ${sim.aBatchesOut} 批。`);
+  } else if (total >= toMin(17,0) && total < toMin(17,30)) {
+    sim.aiEvents = { peakDetected: false, aReleased: false, slowdownDetected: false, aPaused: false, closed: false };
+    sim.aBatchesOut = 0; sim.aPaused = false;
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 晚餐开业，优惠时段（¥15）开始。系统重置，A档余量清零重新备货。`);
+  } else if (total >= toMin(17,30) && total < toMin(19,0)) {
+    if (!sim.aiEvents.peakDetected) { sim.aiEvents.peakDetected = true; document.getElementById('ai-event-1').classList.add('now'); document.getElementById('ai-event-1').querySelector('.time').textContent = fmtFull(total); }
+    if (!sim.aiEvents.aReleased) { sim.aiEvents.aReleased = true; document.getElementById('ai-event-2').classList.add('now'); document.getElementById('ai-event-2').querySelector('.time').textContent = fmtFull(total); }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 晚餐高峰，客流 ${vel}人/5分钟。<span class="ai">AI下达：</span>A档第一批投放，清蒸鲈鱼入F3二号机。`);
+  } else if (total >= toMin(19,0) && total < toMin(21,0)) {
+    if (!sim.aiEvents.slowdownDetected) { sim.aiEvents.slowdownDetected = true; document.getElementById('ai-event-3').classList.add('now'); document.getElementById('ai-event-3').querySelector('.time').textContent = fmtFull(total); }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 晚餐折扣时段，客流下降至 ${vel}人/5分钟。<span class="ai">AI：</span>暂停A档新批，按折扣价消化余量。`);
+  } else if (total >= toMin(21,0)) {
+    if (!sim.aiEvents.closed) { sim.aiEvents.closed = true; document.getElementById('ai-event-5').classList.add('now'); document.getElementById('ai-event-5').querySelector('.time').textContent = fmtFull(total); }
+    addNarrative(`<span class="highlight">${fmtFull(total)}</span> 全场赠送时段（¥0）。<br>今日营业结束。<span class="highlight">全天共服务 ${sim.customers} 人，收入 ¥${sim.totalRevenue}。</span>`);
+  }
+}
+
+function updateUI() {
+  const total = toMin(11, 0) + sim.tick;
+  const p = getPeriod(total);
+  const vel = getVelocity(total);
+
+  // 时钟
+  document.getElementById('clock').textContent = fmt(sim.tick);
+
+  // 时间轴高亮
+  const h = Math.floor(total / 60) % 24;
+  document.querySelectorAll('.tl-hour').forEach(el => {
+    el.classList.remove('active');
+    if (parseInt(el.dataset.h) === h) el.classList.add('active');
+  });
+
+  // POS
+  const price = p.tag === 'closed' || p.tag === 'free' ? '¥0' : '¥' + p.bPrice;
+  const statusTxt = p.tag === 'normal' ? '正价时段' : p.tag === 'discount' ? '折扣时段' : p.tag === 'free' ? '赠送时段' : '停业';
+  const statusCls = p.tag === 'normal' ? 's-normal' : p.tag === 'discount' ? 's-discount' : p.tag === 'free' ? 's-free' : 's-closed';
+
+  document.getElementById('posPeriod').textContent = p.name + ' · ' + fmtFull(p.start) + '-' + fmtFull(p.end);
+  document.getElementById('posPrice').textContent = price;
+  document.getElementById('posTier').textContent = p.aAvailable ? 'B档 / B+A档（+¥5）' : p.tag === 'free' ? '赠送（不限档位）' : 'B档（无A档供应）';
+  document.getElementById('posStatus').textContent = statusTxt;
+  document.getElementById('posStatus').className = 'pos-status ' + statusCls;
+
+  // 前台广告
+  const displayPrice = document.getElementById('displayPrice');
+  displayPrice.textContent = price;
+  displayPrice.className = 'display-price' + (p.tag === 'discount' ? ' discount' : p.tag === 'free' ? ' free' : '');
+
+  const save = document.getElementById('displaySave');
+  if (p.tag === 'discount' && p.bPrice < 18) {
+    save.textContent = `原价 ¥18 → 节省 ¥${18 - p.bPrice}`;
+  } else if (p.tag === 'free') {
+    save.textContent = '全天营业，免费供应';
+  } else if (p.tag === 'normal') {
+    save.textContent = '';
+  } else {
+    save.textContent = '';
+  }
+
+  // 倒计时
+  let freeAt = toMin(15, 0);
+  if (total < toMin(11,0)) freeAt = toMin(11,0);
+  if (total >= toMin(11,0) && total < toMin(15,0)) freeAt = toMin(15,0);
+  if (total >= toMin(15,0) && total < toMin(17,0)) freeAt = toMin(17,0);
+  if (total >= toMin(17,0) && total < toMin(21,0)) freeAt = toMin(21,0);
+  if (total >= toMin(21,0)) { freeAt = total + 999; }
+
+  let countdownLabel = '距全场赠送还有';
+  let countdownRange = fmtFull(freeAt - 60) + ' → ' + fmtFull(freeAt);
+
+  if (p.tag === 'free') {
+    document.getElementById('countdownLabel').textContent = '全场免费供应中';
+    document.getElementById('countdownRange').textContent = '今日营业结束';
+    const diff = 0;
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = 0;
+    document.getElementById('countdownTime').textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    document.getElementById('displayCountdown').style.borderColor = '#27ae60';
+  } else if (p.tag === 'closed') {
+    document.getElementById('countdownLabel').textContent = '距下一时段还有';
+    let nextStart = p.end;
+    if (total < toMin(11,0)) { nextStart = toMin(11,0); countdownRange = '11:00 开始'; }
+    if (total >= toMin(15,0) && total < toMin(17,0)) { nextStart = toMin(17,0); countdownRange = '17:00 晚餐'; }
+    const diff = (nextStart - total) * 60;
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    document.getElementById('countdownTime').textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    document.getElementById('countdownRange').textContent = countdownRange;
+    document.getElementById('displayCountdown').style.borderColor = '#333';
+  } else {
+    document.getElementById('countdownLabel').textContent = '距全场赠送还有';
+    document.getElementById('displayCountdown').style.borderColor = '#e94560';
+    // 找到下一个时段
+    let nextPrices = [];
+    for (let i = 0; i < PERIODS_LUNCH.length; i++) {
+      if (total >= PERIODS_LUNCH[i].start && total < PERIODS_LUNCH[i].end) {
+        for (let j = i + 1; j < PERIODS_LUNCH.length; j++) {
+          if (PERIODS_LUNCH[j].bPrice !== p.bPrice) {
+            nextPrices.push({ price: PERIODS_LUNCH[j].bPrice, time: fmtFull(PERIODS_LUNCH[j].start) });
+            break;
+          }
+        }
+        break;
+      }
+    }
+    for (let i = 0; i < PERIODS_DINNER.length; i++) {
+      if (total >= PERIODS_DINNER[i].start && total < PERIODS_DINNER[i].end) {
+        for (let j = i + 1; j < PERIODS_DINNER.length; j++) {
+          if (PERIODS_DINNER[j].bPrice !== p.bPrice) {
+            nextPrices.push({ price: PERIODS_DINNER[j].bPrice, time: fmtFull(PERIODS_DINNER[j].start) });
+            break;
+          }
+        }
+        break;
+      }
+    }
+    const diff = (freeAt - total) * 60;
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    document.getElementById('countdownTime').textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    document.getElementById('countdownRange').textContent = fmtFull(freeAt - 60) + ' → ' + fmtFull(freeAt);
+
+    const nextEl = document.getElementById('displayNext');
+    if (nextPrices.length > 0) {
+      nextEl.innerHTML = `下一档 <span>¥${nextPrices[0].price}</span> 约 ${nextPrices[0].time}`;
+      nextEl.style.display = 'block';
+    } else {
+      nextEl.style.display = 'none';
+    }
+  }
+
+  // A档控制
+  const aIndicator = document.getElementById('aIndicator');
+  const aMode = document.getElementById('aMode');
+  if (p.tag === 'closed' || p.tag === 'free') {
+    aIndicator.className = 'a-indicator paused';
+    aMode.textContent = '（非营业/赠送时段）';
+    sim.aPaused = true;
+  } else if (p.tag === 'discount') {
+    aIndicator.className = 'a-indicator paused';
+    aMode.textContent = '（折扣时段暂停投放）';
+    sim.aPaused = true;
+  } else {
+    // 正价
+    if (vel >= 8) {
+      aIndicator.className = 'a-indicator';
+      aMode.textContent = '（客流充足，持续补菜）';
+      sim.aPaused = false;
+    } else if (vel >= 4) {
+      aIndicator.className = 'a-indicator';
+      aMode.textContent = '（客流一般，控速补菜）';
+    } else {
+      aIndicator.className = 'a-indicator paused';
+      aMode.textContent = '（客流不足，暂停投放）';
+      sim.aPaused = true;
+    }
+  }
+
+  const batchesLeft = Math.max(0, 8 - sim.aBatchesOut);
+  document.getElementById('aBatches').textContent = `已投放：${sim.aBatchesOut} 批 · 剩余：${batchesLeft} 批`;
+  document.getElementById('aVelocity').textContent = `买单速度：${vel} 人/5分钟`;
+}
+
+function updateF3() {
+  const total = toMin(11, 0) + sim.tick;
+  const vel = getVelocity(total);
+  const p = getPeriod(total);
+
+  // 模拟F3状态变化（每30秒模拟刻）
+  if (vel >= 8 && p.tag === 'normal' && !sim.aPaused) {
+    // 有客流且正价 → F3活跃
+    for (let i = 0; i < 3; i++) {
+      if (!sim.f3State[i].cooking) {
+        const dish = i === 0 ? '姜葱牛肉' : i === 1 ? '清蒸鲈鱼' : (sim.f3State[0].cooking ? '啫啫滑鸡' : '姜葱牛肉');
+        sim.f3State[i] = {
+          dish,
+          next: i === 0 ? '下一道：糖醋里脊' : i === 1 ? '下一道：苦瓜炒蛋' : '等候中',
+          status: 'cooking',
+          cooking: true
+        };
+        break;
+      }
+    }
+  }
+
+  // 每隔一定时间F3完成
+  if (sim.tick % 3 === 0) {
+    for (let i = 0; i < 3; i++) {
+      if (sim.f3State[i].cooking) {
+        sim.f3State[i].cooking = false;
+        sim.f3State[i].status = 'ready';
+        sim.f3State[i].dish = sim.f3State[i].dish;
+        sim.f3State[i].next = '已完成 → 待投放保温台';
+        setTimeout(() => {
+          sim.f3State[i].status = 'idle';
+          sim.f3State[i].dish = '—';
+          sim.f3State[i].next = '等待指令...';
+          renderF3(i);
+        }, 2000);
+      }
+    }
+  }
+
+  for (let i = 0; i < 3; i++) renderF3(i);
+}
+
+function renderF3(i) {
+  const s = sim.f3State[i];
+  const box = document.getElementById('f3-' + i);
+  const dishEl = document.getElementById('f3dish' + i);
+  const nextEl = document.getElementById('f3next' + i);
+  const stEl = document.getElementById('f3st' + i);
+
+  box.className = 'f3-box' + (s.status === 'cooking' ? ' cooking' : s.status === 'ready' ? ' active' : ' idle');
+  dishEl.textContent = s.dish;
+  nextEl.textContent = s.next;
+  const stMap = { cooking: ['st-cooking', '烹饪中'], ready: ['st-ready', '待投放'], idle: ['st-idle', '空闲'] };
+  const [cls, txt] = stMap[s.status] || ['st-idle', '空闲'];
+  stEl.className = 'f3-status ' + cls;
+  stEl.textContent = txt;
+}
+
+// 客流图
+const canvas = document.getElementById('客流Canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = canvas.offsetWidth * 2;
+canvas.height = canvas.offsetHeight * 2;
+
+function drawChart() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const totalSimMins = 12 * 60; // 11:00到23:00 = 12小时
+  const barW = w / totalSimMins;
+
+  for (let m = 0; m < totalSimMins; m++) {
+    const total = toMin(11, 0) + m;
+    const p = getPeriod(total);
+    if (p.tag === 'closed') continue;
+    const vel = getVelocity(total);
+    const barH = (vel / 15) * h;
+    const alpha = m <= sim.tick ? 0.9 : 0.2;
+    ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
+    ctx.fillRect(m * barW, h - barH, Math.max(1, barW - 0.5), barH);
+  }
+}
+
+// ====== 模拟循环 ======
+let intervalId = null;
+
+function tick() {
+  if (!sim.running) return;
+
+  sim.tick++;
+  sim.totalMin++;
+
+  const total = toMin(11, 0) + sim.tick;
+  const p = getPeriod(total);
+  const vel = getVelocity(total);
+
+  // 每5分钟生成客流
+  if (sim.tick % 5 === 0) {
+    const count = vel;
+    for (let i = 0; i < count; i++) {
+      if (Math.random() < 0.9) {
+        sim.customers++;
+        let revenue = p.tag === 'free' ? 0 : p.bPrice;
+        if (p.tag === 'normal' && Math.random() < 0.3) revenue += 5; // 30%加A档
+        sim.totalRevenue += revenue;
+
+        // AI 投放A档判断
+        if (p.tag === 'normal' && !sim.aPaused && vel >= 6 && sim.aBatchesOut < 8) {
+          if (Math.random() < 0.4) {
+            sim.aBatchesOut++;
+            addLog(`<span class="batch">【AI指令】</span> A档第${sim.aBatchesOut}批投放 → ${MENU.a[sim.aBatchesOut % 2]}，入F3 ${(sim.aBatchesOut % 3) + 1}号机`, 'ai');
+          }
+        }
+      }
+    }
+    if (count > 0) {
+      addLog(`<span class="ok">✓</span> 近5分钟 ${count} 笔买单，当前时段 ${p.name} ¥${p.bPrice}`, 'price');
+    }
+  }
+
+  // 每3分钟显示F3指令
+  if (sim.tick % 3 === 0 && p.tag === 'normal' && vel >= 6) {
+    updateF3();
+  }
+
+  // 时段切换提示
+  if (p !== sim.lastPeriod) {
+    addLog(`<span class="price">◆ 时段切换：${p.name} ¥${p.bPrice}${p.aAvailable ? '（A档+¥5）' : ''}</span>`, 'price');
+    sim.lastPeriod = p;
+  }
+
+  updateUI();
+  drawChart();
+  updateNarrative();
+
+  // 到达结束
+  if (sim.tick >= 12 * 60) {
+    sim.running = false;
+    document.getElementById('playBtn').textContent = '▶ 重播';
+    document.getElementById('playBtn').onclick = resetSim;
+  }
+}
+
+function togglePlay() {
+  if (sim.running) {
+    sim.running = false;
+    document.getElementById('playBtn').textContent = '▶ 继续';
+    clearInterval(intervalId);
+  } else {
+    sim.running = true;
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    intervalId = setInterval(tick, 1000 / sim.speed);
+  }
+}
+
+function resetSim() {
+  clearInterval(intervalId);
+  sim = {
+    running: false,
+    tick: 0,
+    speed: sim.speed,
+    totalMin: toMin(11, 0),
+    customers: 0,
+    totalRevenue: 0,
+    aBatchesOut: 0,
+    aPaused: false,
+    f3State: [
+      { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+      { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+      { dish: '—', next: '等待指令...', status: 'idle', cooking: false },
+    ],
+    logEntries: [],
+    aiEvents: { peakDetected: false, aReleased: false, slowdownDetected: false, aPaused: false, closed: false },
+    eventDone: { e1: false, e2: false, e3: false, e4: false, e5: false },
+    lastPeriod: null,
+    minuteCount: 0,
+    recentTx: [],
+  };
+  document.getElementById('logBox').innerHTML = '<div class="log-entry"><span class="t">--:--:--</span> <span class="msg">等待开始...</span></div>';
+  document.getElementById('ai-event-1').classList.remove('now');
+  document.getElementById('ai-event-2').classList.remove('now');
+  document.getElementById('ai-event-3').classList.remove('now');
+  document.getElementById('ai-event-4').classList.remove('now');
+  document.getElementById('ai-event-5').classList.remove('now');
+  document.getElementById('ai-event-1').querySelector('.time').textContent = '--:--';
+  document.getElementById('ai-event-2').querySelector('.time').textContent = '--:--';
+  document.getElementById('ai-event-3').querySelector('.time').textContent = '--:--';
+  document.getElementById('ai-event-4').querySelector('.time').textContent = '--:--';
+  document.getElementById('ai-event-5').querySelector('.time').textContent = '--:--';
+  for (let i = 0; i < 3; i++) renderF3(i);
+  updateUI();
+  drawChart();
+  addNarrative('<span class="highlight">等待开始模拟...</span> 系统各模块就位，等待启动。');
+  document.getElementById('playBtn').textContent = '▶ 开始';
+  document.getElementById('playBtn').onclick = togglePlay;
+}
+
+function setSpeed(s) {
+  sim.speed = s;
+  document.querySelectorAll('.speed-ctrl button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sp' + s).classList.add('active');
+  if (sim.running) {
+    clearInterval(intervalId);
+    intervalId = setInterval(tick, 1000 / s);
+  }
+}
+
+// 时间轴跳转
+document.querySelectorAll('.tl-hour').forEach(el => {
+  el.addEventListener('click', () => {
+    const h = parseInt(el.dataset.h);
+    sim.tick = (h * 60) - toMin(11, 0);
+    sim.totalMin = h * 60;
+    sim.running = false;
+    clearInterval(intervalId);
+    document.getElementById('playBtn').textContent = '▶ 继续';
+    updateUI();
+    drawChart();
+    updateNarrative();
+  });
+});
+
+// 初始化
+updateUI();
+drawChart();
+</script>
+</body>
+</html>
