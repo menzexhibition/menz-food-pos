@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MENZ 快餐 · 全天运营模拟</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      background: #0a0a14;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    /* 顶部时间轴 */
+    .top-bar {
+      background: #12121e;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 2px solid #1e1e3a;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .hour-btn {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #444;
+      cursor: pointer;
+      border: 1px solid transparent;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .hour-btn:hover { color: #e0e0e0; border-color: #333; }
+    .hour-btn.active { background: #e94560; color: #fff; font-weight: bold; border-color: #e94560; }
+    .hour-btn.phase-procure { background: #1d4ed8; color: #fff; }
+    .hour-btn.phase-prep { background: #15803d; color: #fff; }
+    .hour-btn.phase-cook { background: #b45309; color: #fff; }
+    .hour-btn.phase-open { background: #e94560; color: #fff; }
+    .hour-btn.phase-close { background: #374151; color: #888; }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .clock {
+      font-size: 26px;
+      font-weight: bold;
+      color: #e94560;
+      font-variant-numeric: tabular-nums;
+    }
+    .speed-btns { display: flex; gap: 4px; }
+    .speed-btns button {
+      background: #1e1e3a;
+      border: 1px solid #333;
+      color: #888;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .speed-btns button.active { background: #e94560; color: #fff; border-color: #e94560; }
+    .play-btn {
+      background: #e94560;
+      border: none;
+      color: #fff;
+      padding: 5px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    /* 主布局 */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 2px;
+      padding: 2px;
+    }
+    .panel {
+      background: #12121e;
+      padding: 12px;
+    }
+    .panel-title {
+      font-size: 10px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e1e3a;
+    }
+
+    /* 采购面板 */
+    .budget-bar {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .budget-label { font-size: 12px; color: #888; }
+    .budget-val { font-size: 20px; font-weight: bold; color: #f39c12; }
+
+    .procure-list {
+      background: #0f0f1a;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .procure-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #1a1a2e;
+      font-size: 12px;
+    }
+    .procure-item:last-child { border-bottom: none; }
+    .procure-item .name { color: #aaa; }
+    .procure-item .price { color: #888; }
+    .procure-item .qty { color: #f39c12; font-weight: bold; }
+    .procure-item.selected { background: #1a1a2e; border-radius: 4px; padding: 4px 6px; }
+
+    .ai-decision-box {
+      background: #0f0f1a;
+      border: 1px solid #1d4ed8;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .ai-decision-title { font-size: 11px; color: #1d4ed8; font-weight: bold; margin-bottom: 6px; }
+    .ai-decision-text { font-size: 12px; color: #aaa; line-height: 1.6; }
+    .ai-tag { color: #e94560; font-weight: bold; }
+
+    /* 配菜进度 */
+    .prep-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .prep-dish {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid #222;
+    }
+    .prep-dish.name { font-size: 12px; color: #fff; font-weight: bold; margin-bottom: 4px; }
+    .prep-dish.status { font-size: 10px; color: #888; }
+    .prep-dish.status.done { color: #27ae60; }
+    .prep-dish.status.cooking { color: #f39c12; }
+    .prep-progress {
+      height: 4px;
+      background: #222;
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .prep-progress-fill {
+      height: 100%;
+      background: #27ae60;
+      border-radius: 2px;
+      transition: width 0.5s;
+    }
+
+    /* 收银面板 */
+    .pos-display {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pos-period { font-size: 12px; color: #888; margin-bottom: 4px; }
+    .pos-price { font-size: 40px; font-weight: bold; color: #e94560; }
+    .pos-tier { font-size: 12px; color: #666; margin-top: 4px; }
+    .pos-status-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-top: 8px;
+    }
+    .pill-normal { background: #e94560; color: #fff; }
+    .pill-discount { background: #b45309; color: #fff; }
+    .pill-free { background: #27ae60; color: #fff; }
+    .pill-closed { background: #333; color: #888; }
+    .pill-procure { background: #1d4ed8; color: #fff; }
+    .pill-prep { background: #15803d; color: #fff; }
+    .pill-cook { background: #b45309; color: #fff; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .stat-card {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-num { font-size: 22px; font-weight: bold; color: #fff; }
+    .stat-num.green { color: #27ae60; }
+    .stat-num.yellow { color: #f39c12; }
+    .stat-label { font-size: 10px; color: #666; margin-top: 2px; }
+
+    /* 后厨电视 */
+    .kitchen-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+    .f3-card {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 10px;
+      border: 2px solid #222;
+      transition: all 0.3s;
+    }
+    .f3-card.active { border-color: #27ae60; }
+    .f3-card.cooking { border-color: #f39c12; }
+    .f3-card.idle { opacity: 0.5; }
+    .f3-num { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .f3-dish { font-size: 13px; font-weight: bold; color: #fff; min-height: 18px; }
+    .f3-next { font-size: 10px; color: #666; min-height: 14px; margin-bottom: 6px; }
+    .f3-status-pill {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .st-idle { background: #333; color: #888; }
+    .st-ready { background: #15803d; color: #fff; }
+    .st-cooking { background: #b45309; color: #fff; }
+
+    /* A档控制 */
+    .a-control {
+      background: #1a1a2e;
+      border: 2px solid #6b21a8;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .a-header { font-size: 11px; color: #a855f7; font-weight: bold; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .a-dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; }
+    .a-dot.paused { background: #e94560; }
+    .a-info { font-size: 12px; color: #888; line-height: 1.8; }
+    .a-dishes { font-size: 12px; color: #ccc; margin-bottom: 4px; }
+
+    /* 前台广告 */
+    .display-screen {
+      background: #0a0a14;
+      border: 2px solid #222;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .display-brand { font-size: 12px; color: #555; letter-spacing: 4px; margin-bottom: 10px; }
+    .display-menu {
+      background: #12121e;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 12px;
+      text-align: left;
+      font-size: 12px;
+    }
+    .display-menu-title { color: #555; margin-bottom: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .display-dishes { color: #aaa; line-height: 1.8; }
+    .display-price { font-size: 44px; font-weight: bold; color: #fff; margin: 8px 0; }
+    .display-price.disc { color: #f39c12; }
+    .display-price.free { color: #27ae60; }
+    .display-save { font-size: 12px; color: #666; margin-bottom: 10px; }
+    .display-countdown {
+      background: #12121e;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    .display-countdown-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .display-countdown-time { font-size: 32px; font-weight: bold; color: #e94560; font-variant-numeric: tabular-nums; }
+    .display-countdown-range { font-size: 10px; color: #555; margin-top: 2px; }
+    .display-next { font-size: 12px; color: #666; margin-top: 8px; }
+    .display-next span { color: #f39c12; font-weight: bold; }
+    .phase-label {
+      background: #1a1a2e;
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 10px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    /* 叙述文字 */
+    .narrative {
+      grid-column: 1 / -1;
+      background: #0f0f1a;
+      border-left: 3px solid #e94560;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #aaa;
+      line-height: 1.7;
+      border-radius: 0 6px 6px 0;
+      min-height: 60px;
+    }
+    .narrative .t { color: #f39c12; font-weight: bold; }
+    .narrative .ai { color: #e94560; font-weight: bold; }
+    .narrative .green { color: #27ae60; font-weight: bold; }
+    .narrative .money { color: #f39c12; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="top-bar" id="topBar">
+  <!-- 时间轴按钮由 JS 动态生成 -->
+  <div class="top-right">
+    <div class="speed-btns">
+      <button onclick="setSpeed(1)" id="sp1" class="active">1x</button>
+      <button onclick="setSpeed(5)" id="sp5">5x</button>
+      <button onclick="setSpeed(20)" id="sp20">20x</button>
+      <button onclick="setSpeed(60)" id="sp60">60x</button>
+    </div>
+    <div class="clock" id="clock">08:00</div>
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ 开始</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 左侧：采购系统 -->
+  <div class="panel">
+    <div class="panel-title">① 食材采购系统</div>
+    <div class="budget-bar">
+      <span class="budget-label">今日采购预算</span>
+      <span class="budget-val" id="budget">¥2,000</span>
+    </div>
+
+    <div class="procure-list" id="procureList">
+      <div style="font-size:12px;color:#555;padding:20px;text-align:center;">
+        等待AI生成采购清单...
+      </div>
+    </div>
+
+    <div class="ai-decision-box" id="aiBox" style="display:none;">
+      <div class="ai-decision-title">🤖 AI 今日决策</div>
+      <div class="ai-decision-text" id="aiText"></div>
+    </div>
+  </div>
+
+  <!-- 中间：收银系统 -->
+  <div class="panel">
+    <div class="panel-title">② 收银系统（中控）</div>
+
+    <div class="pos-display">
+      <div class="pos-period" id="posPeriod">等待营业</div>
+      <div class="pos-price" id="posPrice">¥0</div>
+      <div class="pos-tier" id="posTier">—</div>
+      <div class="pos-status-pill pill-closed" id="posStatus">准备中</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="statCustomers">0</div>
+        <div class="stat-label">累计客流</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num green" id="statRevenue">¥0</div>
+        <div class="stat-label">累计收入</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num yellow" id="statBatches">0</div>
+        <div class="stat-label">A档已投放</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statLeft">—</div>
+        <div class="stat-label">剩余预算</div>
+      </div>
+    </div>
+
+    <!-- 配菜进度 -->
+    <div class="panel-title" style="margin-top:6px;">配菜进度</div>
+    <div class="prep-grid" id="prepGrid"></div>
+  </div>
+
+  <!-- 右侧：前台广告 -->
+  <div class="panel">
+    <div class="panel-title">④ 前台广告大屏</div>
+    <div class="display-screen" id="displayScreen">
+      <div class="display-brand">M E N Z 快 餐</div>
+      <div class="phase-label" id="phaseLabel">准备中</div>
+
+      <div class="display-menu" id="displayMenu">
+        <div class="display-menu-title">今日菜品</div>
+        <div class="display-dishes" id="displayDishes">等待系统启动...</div>
+      </div>
+
+      <div class="display-price" id="displayPrice">¥0</div>
+      <div class="display-save" id="displaySave"></div>
+
+      <div class="display-countdown" id="displayCountdown">
+        <div class="display-countdown-label" id="countdownLabel">距离开业还有</div>
+        <div class="display-countdown-time" id="countdownTime">02:30:00</div>
+        <div class="display-countdown-range" id="countdownRange">11:00 午餐开业</div>
+      </div>
+
+      <div class="display-next" id="displayNext" style="display:none">
+        下一档 <span id="nextPrice">¥16</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下方：后厨电视 -->
+  <div class="panel" style="grid-column:1/-1">
+    <div class="panel-title">③ 后厨电视（F3 指令）</div>
+
+    <div class="a-control" id="aControl">
+      <div class="a-header">
+        <div class="a-dot" id="aDot"></div>
+        A档 出菜控制
+        <span style="font-size:10px;color:#888;font-weight:normal;" id="aModeText"></span>
+      </div>
+      <div class="a-dishes" id="aDishesText">姜葱牛肉 / 清蒸鲈鱼</div>
+      <div class="a-info" id="aInfo">已投放：0 批 | 剩余：8 批</div>
+    </div>
+
+    <div class="kitchen-grid" id="kitchenGrid">
+      <div class="f3-card idle" id="f3-0">
+        <div class="f3-num">F3 一号机</div>
+        <div class="f3-dish" id="fd0">—</div>
+        <div class="f3-next" id="fn0">空闲中</div>
+        <span class="f3-status-pill st-idle" id="fs0">空闲</span>
+      </div>
+      <div class="f3-card idle" id="f3-1">
+        <div class="f3-num">F3 二号机</div>
+        <div class="f3-dish" id="fd1">—</div>
+        <div class="f3-next" id="fn1">空闲中</div>
+        <span class="f3-status-pill st-idle" id="fs1">空闲</span>
+      </div>
+      <div class="f3-card idle" id="f3-2">
+        <div class="f3-num">F3 三号机</div>
+        <div class="f3-dish" id="fd2">—</div>
+        <div class="f3-next" id="fn2">空闲中</div>
+        <span class="f3-status-pill st-idle" id="fs2">空闲</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 叙述 -->
+  <div class="narrative" id="narrative">
+    <span class="t">08:00</span> 系统启动。<span class="ai">AI</span>正在分析今日食材市场价格，准备生成采购清单...
+  </div>
+
+</div>
+
+<script>
+// ===========================
+//  全天运营模拟引擎
+// ===========================
+
+// -------- 菜品库 --------
+const DISHES_A = ['姜葱牛肉', '清蒸鲈鱼'];
+const DISHES_B = ['洋葱牛肉', '糖醋里脊', '咕噜肉', '啫啫滑鸡'];
+const DISHES_C = ['番茄炒蛋', '苦瓜炒蛋', '蒜蓉菜心', '四季豆肉末'];
+const ALL_DISHES = [...DISHES_A, ...DISHES_B, ...DISHES_C];
+
+// 食材采购清单（示例价格）
+const INGREDIENTS = {
+  '牛肉': { unit: '斤', price: 35, perBatch: 1.5 },
+  '五花肉': { unit: '斤', price: 18, perBatch: 2 },
+  '鸡肉': { unit: '斤', price: 14, perBatch: 2 },
+  '鲈鱼': { unit: '斤', price: 22, perBatch: 1 },
+  '鸡蛋': { unit: '斤', price: 7, perBatch: 1 },
+  '番茄': { unit: '斤', price: 4, perBatch: 1.5 },
+  '菜心': { unit: '斤', price: 3, perBatch: 2 },
+  '苦瓜': { unit: '斤', price: 5, perBatch: 1 },
+  '四季豆': { unit: '斤', price: 6, perBatch: 1.5 },
+  '洋葱': { unit: '斤', price: 3, perBatch: 0.5 },
+  '蒜': { unit: '两', price: 1, perBatch: 2 },
+  '葱姜': { unit: '斤', price: 5, perBatch: 0.5 },
+  '菠萝': { unit: '个', price: 3, perBatch: 1 },
+  '酸梅酱': { unit: '瓶', price: 8, perBatch: 0.2 },
+  '沙爹酱': { unit: '瓶', price: 12, perBatch: 0.2 },
+  '豆豉': { unit: '包', price: 5, perBatch: 0.3 },
+};
+
+// 每天选4道B档 + 4道C档 + 2道A档（固定）
+const TODAY = {
+  a: DISHES_A,                          // 固定2道
+  b: ['洋葱牛肉', '糖醋里脊', '咕噜肉', '啫啫滑鸡'],  // 今天4道
+  c: ['番茄炒蛋', '苦瓜炒蛋', '蒜蓉菜心', '四季豆肉末'], // 今天4道
+};
+
+// -------- 时段 --------
+function getPeriod(totalMin) {
+  // 8:00-10:29 采购备菜
+  if (totalMin >= 480 && totalMin < 630) return { phase: 'procure', name: '采购备菜', bPrice: 0, aAvailable: false, tag: 'procure' };
+  // 10:30-10:59 预热烹饪
+  if (totalMin >= 630 && totalMin < 660) return { phase: 'cook', name: '预热烹饪', bPrice: 0, aAvailable: false, tag: 'cook' };
+  // 11:00-11:29 午餐优惠
+  if (totalMin >= 660 && totalMin < 690) return { phase: 'open', name: '午餐优惠', bPrice: 15, aAvailable: false, tag: 'discount' };
+  // 11:30-12:59 午餐正价
+  if (totalMin >= 690 && totalMin < 780) return { phase: 'open', name: '午餐正价', bPrice: 18, aAvailable: true, tag: 'normal' };
+  // 13:00-13:29 午餐折扣
+  if (totalMin >= 780 && totalMin < 810) return { phase: 'open', name: '午餐折扣', bPrice: 16, aAvailable: false, tag: 'discount' };
+  // 13:30-13:59 午餐折扣
+  if (totalMin >= 810 && totalMin < 840) return { phase: 'open', name: '午餐折扣', bPrice: 14, aAvailable: false, tag: 'discount' };
+  // 14:00-14:29 午餐折扣
+  if (totalMin >= 840 && totalMin < 870) return { phase: 'open', name: '午餐折扣', bPrice: 12, aAvailable: false, tag: 'discount' };
+  // 14:30-14:59 午餐折扣
+  if (totalMin >= 870 && totalMin < 900) return { phase: 'open', name: '午餐折扣', bPrice: 10, aAvailable: false, tag: 'discount' };
+  // 15:00-16:59 午休
+  if (totalMin >= 900 && totalMin < 1020) return { phase: 'close', name: '午休', bPrice: 0, aAvailable: false, tag: 'closed' };
+  // 17:00-17:29 晚餐优惠
+  if (totalMin >= 1020 && totalMin < 1050) return { phase: 'open', name: '晚餐优惠', bPrice: 15, aAvailable: false, tag: 'discount' };
+  // 17:30-18:59 晚餐正价
+  if (totalMin >= 1050 && totalMin < 1140) return { phase: 'open', name: '晚餐正价', bPrice: 18, aAvailable: true, tag: 'normal' };
+  // 19:00-19:29 晚餐折扣
+  if (totalMin >= 1140 && totalMin < 1170) return { phase: 'open', name: '晚餐折扣', bPrice: 16, aAvailable: false, tag: 'discount' };
+  // 19:30-19:59 晚餐折扣
+  if (totalMin >= 1170 && totalMin < 1200) return { phase: 'open', name: '晚餐折扣', bPrice: 14, aAvailable: false, tag: 'discount' };
+  // 20:00-20:29 晚餐折扣
+  if (totalMin >= 1200 && totalMin < 1230) return { phase: 'open', name: '晚餐折扣', bPrice: 12, aAvailable: false, tag: 'discount' };
+  // 20:30-20:59 晚餐折扣
+  if (totalMin >= 1230 && totalMin < 1260) return { phase: 'open', name: '晚餐折扣', bPrice: 10, aAvailable: false, tag: 'discount' };
+  // 21:00+ 赠送
+  if (totalMin >= 1260) return { phase: 'close', name: '全场赠送', bPrice: 0, aAvailable: false, tag: 'free' };
+  return { phase: 'procure', name: '准备', bPrice: 0, aAvailable: false, tag: 'procure' };
+}
+
+// -------- 客流 --------
+function getVelocity(totalMin) {
+  const m = totalMin % (24 * 60);
+  // 11:00-11:29 早到优惠
+  if (m >= 660 && m < 690) return 6;
+  // 11:30-12:29 高峰
+  if (m >= 690 && m < 750) return 12;
+  // 12:30-12:59 下降
+  if (m >= 750 && m < 780) return 8;
+  // 13:00-13:59 折扣人少
+  if (m >= 780 && m < 840) return 4;
+  // 14:00-14:59 尾声
+  if (m >= 840 && m < 900) return 2;
+  // 17:00-17:29 优惠时段
+  if (m >= 1020 && m < 1050) return 7;
+  // 17:30-18:29 晚餐高峰
+  if (m >= 1050 && m < 1110) return 13;
+  // 18:30-18:59 略降
+  if (m >= 1110 && m < 1140) return 9;
+  // 19:00-19:59 折扣
+  if (m >= 1140 && m < 1200) return 5;
+  // 20:00-20:59 尾声
+  if (m >= 1200 && m < 1260) return 3;
+  return 0;
+}
+
+// -------- 采购清单生成 --------
+function generateProcureList() {
+  const BUDGET = 2000;
+  let spent = 0;
+  const items = [];
+
+  // 预估每道菜需要多少批次
+  // A档: 8批（80人份，每批10人）
+  // B档: 12批（120人份，每批10人）
+  // C档: 6批（60人份，每批10人）
+
+  const needs = {
+    '牛肉': 1.5 * 12,      // 洋葱牛肉 + 姜葱牛肉
+    '五花肉': 2 * 4,       // 糖醋里脊 + 咕噜肉
+    '鸡肉': 2 * 4,         // 啫啫滑鸡
+    '鲈鱼': 1 * 8,         // A档清蒸鲈鱼
+    '鸡蛋': 1 * 6,         // 番茄炒蛋 + 苦瓜炒蛋
+    '番茄': 1.5 * 6,       // 番茄炒蛋
+    '苦瓜': 1 * 3,         // 苦瓜炒蛋
+    '菜心': 2 * 3,         // 蒜蓉菜心
+    '四季豆': 1.5 * 3,     // 四季豆肉末
+    '猪肉末': 1 * 3,       // 四季豆肉末
+    '洋葱': 0.5 * 6,       // 洋葱牛肉
+    '蒜': 0.2 * 8,        // 多道共用
+    '葱姜': 0.5 * 10,
+    '菠萝': 1 * 2,         // 咕噜肉
+    '酸梅酱': 0.2 * 2,
+    '沙爹酱': 0.2 * 2,
+    '豆豉': 0.3 * 2,
+    '蚝油': 0.2 * 4,
+    '沙姜': 0.1 * 4,
+  };
+
+  // 计算总价
+  let total = 0;
+  for (const [name, ing] of Object.entries(INGREDIENTS)) {
+    const qty = needs[name] || 0;
+    if (qty > 0) {
+      total += qty * ing.price;
+    }
+  }
+
+  // 按比例分配到 ¥2000
+  const scale = Math.min(1, BUDGET / total);
+
+  for (const [name, ing] of Object.entries(INGREDIENTS)) {
+    const qty = Math.round((needs[name] || 0) * scale * 10) / 10;
+    if (qty > 0) {
+      const cost = Math.round(qty * ing.price);
+      items.push({ name, qty, unit: ing.unit, price: ing.price, cost });
+      spent += cost;
+    }
+  }
+
+  return { items, spent, total, budget: BUDGET, surplus: BUDGET - spent };
+}
+
+// -------- 模拟状态 --------
+let S = {
+  running: false,
+  speed: 1,
+  tick: 0,        // 模拟分钟，从8:00=0开始
+  totalMin: 480,  // 8:00 = 480分钟
+  customers: 0,
+  revenue: 0,
+  aBatches: 0,
+  aPaused: false,
+  procureDone: false,
+  prepDone: false,
+  phaseEvents: { procureDone: false, prepDone: false, cookStart: false, lunchEnd: false, dinnerEnd: false },
+  f3: [
+    { dish: '—', next: '空闲中', status: 'idle' },
+    { dish: '—', next: '空闲中', status: 'idle' },
+    { dish: '—', next: '空闲中', status: 'idle' },
+  ],
+  prepProgress: {}, // 每道菜的备菜进度 %
+  procureList: null,
+  procurementArrived: false,
+  lastPhase: null,
+  aiEvents: { peakDetected: false, aReleased: false, slowdown: false, aPause: false, closed: false },
+};
+
+// -------- 工具 --------
+function fmt(min) {
+  const h = Math.floor(min / 60) % 24;
+  const m = min % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function fmtClock(tick) {
+  return fmt(S.totalMin);
+}
+
+function getPhaseColor(phase) {
+  const map = { procure: '#1d4ed8', prep: '#15803d', cook: '#b45309', open: '#e94560', close: '#374151' };
+  return map[phase] || '#555';
+}
+
+// -------- UI 更新 --------
+function updateUI() {
+  const p = getPeriod(S.totalMin);
+  const vel = getVelocity(S.totalMin);
+  const tick = S.tick;
+
+  // 时钟
+  document.getElementById('clock').textContent = fmtClock(tick);
+
+  // 时间轴高亮
+  document.querySelectorAll('.hour-btn').forEach(el => {
+    el.classList.remove('active');
+    const h = parseInt(el.dataset.h);
+    if (h !== undefined && S.totalMin >= h * 60 && S.totalMin < (h + 1) * 60) el.classList.add('active');
+  });
+
+  // 收银中控
+  const priceEl = document.getElementById('posPrice');
+  const statusEl = document.getElementById('posStatus');
+  const periodEl = document.getElementById('posPeriod');
+  const tierEl = document.getElementById('posTier');
+
+  priceEl.textContent = p.bPrice > 0 ? '¥' + p.bPrice : '¥0';
+  periodEl.textContent = p.name;
+  tierEl.textContent = p.phase === 'open'
+    ? (p.aAvailable ? 'B档 / B+A档（+¥5）' : 'B档')
+    : (p.phase === 'procure' ? '采购备菜阶段' : p.phase === 'cook' ? '预热烹饪阶段' : p.tag === 'free' ? '全场赠送' : '午休停业');
+
+  const pillMap = { normal: 'pill-normal', discount: 'pill-discount', free: 'pill-free', closed: 'pill-closed', procure: 'pill-procure', cook: 'pill-cook' };
+  statusEl.textContent = p.name;
+  statusEl.className = 'pos-status-pill ' + (pillMap[p.tag] || 'pill-closed');
+
+  document.getElementById('statCustomers').textContent = S.customers;
+  document.getElementById('statRevenue').textContent = '¥' + S.revenue;
+  document.getElementById('statBatches').textContent = S.aBatches;
+  document.getElementById('statLeft').textContent = S.procureList ? '¥' + S.procureList.surplus : '—';
+
+  // 前台广告
+  const phaseLbl = document.getElementById('phaseLabel');
+  const phaseColors = { procure: '#1d4ed8', cook: '#b45309', open: '#e94560', close: '#374151' };
+  const phaseTexts = { procure: '准备中', cook: '即将开业', open: '营业中', close: '已打烊' };
+  phaseLbl.textContent = phaseTexts[p.phase] || '准备中';
+  phaseLbl.style.background = phaseColors[p.phase] || '#333';
+
+  const dPrice = document.getElementById('displayPrice');
+  dPrice.textContent = p.bPrice > 0 ? '¥' + p.bPrice : '¥0';
+  dPrice.className = 'display-price' + (p.tag === 'discount' ? ' disc' : p.tag === 'free' ? ' free' : '');
+
+  const saveEl = document.getElementById('displaySave');
+  if (p.tag === 'discount' && p.bPrice < 18) {
+    saveEl.textContent = `原价 ¥18 → 节省 ¥${18 - p.bPrice}`;
+  } else if (p.tag === 'free') {
+    saveEl.textContent = '全场免费，感谢光临';
+  } else {
+    saveEl.textContent = '';
+  }
+
+  // 倒计时
+  const cdLabel = document.getElementById('countdownLabel');
+  const cdTime = document.getElementById('countdownTime');
+  const cdRange = document.getElementById('countdownRange');
+  const cdBox = document.getElementById('displayCountdown');
+  cdBox.style.borderColor = '#e94560';
+
+  if (p.phase === 'procure' || p.phase === 'cook') {
+    cdLabel.textContent = '距11:00开业还有';
+    const diff = (660 - S.totalMin) * 60;
+    cdTime.textContent = String(Math.floor(diff/3600)).padStart(2,'0') + ':' + String(Math.floor((diff%3600)/60)).padStart(2,'0') + ':' + String(diff%60).padStart(2,'0');
+    cdRange.textContent = '11:00 午餐开业';
+  } else if (p.tag === 'closed') {
+    cdLabel.textContent = '距17:00晚餐还有';
+    const diff = (1020 - S.totalMin) * 60;
+    cdTime.textContent = String(Math.floor(diff/3600)).padStart(2,'0') + ':' + String(Math.floor((diff%3600)/60)).padStart(2,'0') + ':' + String(diff%60).padStart(2,'0');
+    cdRange.textContent = '17:00 晚餐开业';
+  } else if (p.tag === 'free') {
+    cdLabel.textContent = '全场免费供应中';
+    cdTime.textContent = '00:00:00';
+    cdRange.textContent = '今日营业结束';
+    cdBox.style.borderColor = '#27ae60';
+  } else {
+    // 找下一个折扣/赠送时点
+    let nextPrice = p.bPrice;
+    let nextTime = 1260; // 默认21:00赠送
+    if (S.totalMin < 780) nextTime = 780;
+    else if (S.totalMin < 810) nextTime = 810;
+    else if (S.totalMin < 840) nextTime = 840;
+    else if (S.totalMin < 870) nextTime = 870;
+    else if (S.totalMin < 1140) nextTime = 1140;
+    else if (S.totalMin < 1170) nextTime = 1170;
+    else if (S.totalMin < 1200) nextTime = 1200;
+    else if (S.totalMin < 1230) nextTime = 1230;
+    else nextTime = 1260;
+
+    const priceMap = { 780: 16, 810: 14, 840: 12, 870: 10, 1140: 16, 1170: 14, 1200: 12, 1230: 10, 1260: 0 };
+    nextPrice = priceMap[nextTime];
+    const diff = (nextTime - S.totalMin) * 60;
+    cdLabel.textContent = nextPrice === 0 ? '距全场赠送还有' : '距¥' + nextPrice + '折扣还有';
+    cdTime.textContent = String(Math.floor(diff/3600)).padStart(2,'0') + ':' + String(Math.floor((diff%3600)/60)).padStart(2,'0') + ':' + String(diff%60).padStart(2,'0');
+    cdRange.textContent = fmt(nextTime - 60) + ' → ' + fmt(nextTime);
+
+    const nextEl = document.getElementById('displayNext');
+    if (nextPrice > 0) {
+      nextEl.innerHTML = '下一档 <span>¥' + nextPrice + '</span> 约 ' + fmt(nextTime);
+      nextEl.style.display = 'block';
+    } else {
+      nextEl.innerHTML = '即将 <span style="color:#27ae60">全场免费</span>';
+      nextEl.style.display = 'block';
+    }
+  }
+
+  // A档控制
+  const aDot = document.getElementById('aDot');
+  const aMode = document.getElementById('aModeText');
+  const aInfo = document.getElementById('aInfo');
+  if (p.tag === 'free' || p.tag === 'closed' || p.phase === 'procure' || p.phase === 'cook') {
+    aDot.classList.add('paused');
+    aMode.textContent = '（非营业/准备中）';
+  } else if (p.tag === 'discount') {
+    aDot.classList.add('paused');
+    aMode.textContent = '（折扣时段暂停新批）';
+  } else {
+    if (vel >= 8 && !S.aPaused) {
+      aDot.classList.remove('paused');
+      aMode.textContent = '（客流充足，持续补菜）';
+    } else if (vel >= 4) {
+      aDot.classList.remove('paused');
+      aMode.textContent = '（客流一般，控速）';
+    } else {
+      aDot.classList.add('paused');
+      aMode.textContent = '（客流不足，暂停）';
+    }
+  }
+  const batchesLeft = Math.max(0, 8 - S.aBatches);
+  aInfo.textContent = `已投放：${S.aBatches} 批 | 剩余：${batchesLeft} 批 | 买单${vel}人/5min`;
+
+  // F3
+  for (let i = 0; i < 3; i++) {
+    const f = S.f3[i];
+    const card = document.getElementById('f3-' + i);
+    card.className = 'f3-card ' + (f.status === 'idle' ? 'idle' : f.status === 'ready' ? 'active' : 'cooking');
+    document.getElementById('fd' + i).textContent = f.dish;
+    document.getElementById('fn' + i).textContent = f.next;
+    const stMap = { idle: ['st-idle', '空闲'], ready: ['st-ready', '待投放'], cooking: ['st-cooking', '烹饪中'] };
+    const [cls, txt] = stMap[f.status] || ['st-idle', '空闲'];
+    document.getElementById('fs' + i).className = 'f3-status-pill ' + cls;
+    document.getElementById('fs' + i).textContent = txt;
+  }
+
+  // 配菜进度
+  updatePrepGrid();
+}
+
+function updatePrepGrid() {
+  const grid = document.getElementById('prepGrid');
+  const allToday = [...TODAY.a, ...TODAY.b, ...TODAY.c];
+  grid.innerHTML = '';
+
+  allToday.forEach(dish => {
+    const progress = S.prepProgress[dish] || 0;
+    const done = progress >= 100;
+    const div = document.createElement('div');
+    div.className = 'prep-dish';
+    div.innerHTML = `
+      <div class="name">${dish}</div>
+      <div class="status ${done ? 'done' : ''}">${done ? '✓ 备菜完成' : '备菜中...'}</div>
+      <div class="prep-progress"><div class="prep-progress-fill" style="width:${Math.min(100, progress)}%"></div></div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+// -------- 叙述 --------
+function updateNarrative() {
+  const p = getPeriod(S.totalMin);
+  const vel = getVelocity(S.totalMin);
+  const el = document.getElementById('narrative');
+  let text = `<span class="t">${fmt(S.totalMin)}</span> `;
+
+  if (S.totalMin >= 480 && S.totalMin < 630) {
+    if (!S.procureDone) {
+      if (S.totalMin < 500) {
+        text += `<span class="ai">AI</span>分析今日食材价格，生成采购清单。<span class="money">¥${S.procureList ? S.procureList.spent : '...'}</span>/<span class="money">¥2,000</span>预算分配。`;
+      } else if (S.totalMin < 560) {
+        text += `食材陆续到达。<span class="green">洋葱、牛肉、鸡肉</span>已入库，厨师开始分类处理。`;
+      } else if (S.totalMin < 620) {
+        text += `所有食材采购完毕。<span class="green">${TODAY.a.join('、')}</span>备菜中。`;
+      } else {
+        text += `配菜完成。<span class="ai">AI</span>发出烹饪预热指令：10:30开始预热F3。`;
+      }
+    }
+  } else if (S.totalMin >= 630 && S.totalMin < 660) {
+    if (!S.phaseEvents.cookStart) {
+      S.phaseEvents.cookStart = true;
+      text += `<span class="ai">AI</span>发出指令：<span class="green">F3预热开始！</span> 10:30整，三台F3开始预热，等待11:00正式出菜。`;
+    } else {
+      const mins = S.totalMin - 630;
+      if (mins < 10) text += `F3预热第${mins}分钟，各项指标正常，等待11:00开业。`;
+      else if (mins < 20) text += `F3温度达标，厨师做最后备料。<span class="ai">AI</span>预测11:00客流约${vel}人/5分钟。`;
+      else text += `即将开业！<span class="green">F3一号机</span>准备炒第一道菜：${TODAY.b[0]}。`;
+    }
+  } else if (S.totalMin >= 660 && S.totalMin < 690) {
+    if (!S.aiEvents.peakDetected) {
+      S.aiEvents.peakDetected = true;
+    }
+    const mins = S.totalMin - 660;
+    if (mins < 10) {
+      text += `午餐优惠时段（¥15）开始！<span class="ai">AI</span>分析：客流${vel}人/5min，<span class="green">暂不开放A档。</span>先消耗B/C档库存。`;
+    } else {
+      text += `优惠时段客流稳定。<span class="ai">AI</span>继续监控买单速度，等待正价时段开放A档。`;
+    }
+  } else if (S.totalMin >= 690 && S.totalMin < 750) {
+    if (!S.aiEvents.aReleased) {
+      S.aiEvents.aReleased = true;
+      text += `<span class="ai">AI决策：</span>买单速度${vel}人/5min（高峰），立即开放A档！<span class="green">姜葱牛肉</span>入F3一号机，开始烹饪！`;
+    } else {
+      text += `正价午餐高峰持续。<span class="ai">AI</span>监控：已投放A档${S.aBatches}批，买单速度${vel}人/5min，F3全力运转中。`;
+    }
+  } else if (S.totalMin >= 750 && S.totalMin < 780) {
+    text += `午餐高峰渐过，客流下降至${vel}人/5min。<span class="ai">AI</span>控速：维持A档补菜，但减缓投放频率。`;
+  } else if (S.totalMin >= 780 && S.totalMin < 840) {
+    if (!S.aiEvents.slowdown) {
+      S.aiEvents.slowdown = true;
+      S.aiEvents.aPause = true;
+      text += `<span class="ai">AI决策：</span>客流${vel}人/5min，折扣时段暂停A档新批投放。<span class="green">剩余A档按¥${p.bPrice}折扣价供应。</span>`;
+    } else {
+      text += `午餐折扣时段（¥${p.bPrice}），客流稀疏。<span class="ai">AI</span>维持暂停A档。`;
+    }
+  } else if (S.totalMin >= 840 && S.totalMin < 900) {
+    text += `午餐尾声，客流${vel}人/5min。F3切换为${TODAY.c[0]}等C档补充。<span class="ai">AI</span>预测12:00前可消化剩余食材。`;
+  } else if (S.totalMin >= 900 && S.totalMin < 1020) {
+    if (!S.phaseEvents.lunchEnd) {
+      S.phaseEvents.lunchEnd = true;
+      text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余食材，决定晚餐菜量。`;
+    } else {
+      const mins = S.totalMin - 900;
+      if (mins < 60) text += `午休中。<span class="ai">AI</span>分析上午数据：午餐客单价¥${S.customers > 0 ? Math.round(S.revenue/S.customers) : 0}。`;
+      else if (mins < 100) text += `厨师休息。<span class="ai">AI</span>已安排晚餐备菜计划，17:00准时开业。`;
+      else text += `即将恢复晚餐备菜。检查剩余食材中...`;
+    }
+  } else if (S.totalMin >= 1020 && S.totalMin < 1050) {
+    if (!S.aiEvents.peakDetected) { S.aiEvents.peakDetected = true; S.aiEvents.aReleased = false; }
+    if (S.totalMin === 1020) {
+      text += `<span class="t">17:00</span> <span class="green">晚餐开业！</span>优惠时段（¥15）。<span class="ai">AI</span>重置午餐数据，准备晚餐出餐计划。`;
+    } else {
+      text += `晚餐优惠时段，客流${vel}人/5min。AI继续监控，等待17:30正价开放A档。`;
+    }
+  } else if (S.totalMin >= 1050 && S.totalMin < 1140) {
+    if (!S.aiEvents.aReleased) {
+      S.aiEvents.aReleased = true;
+      text += `<span class="ai">AI决策：</span>晚餐客流${vel}人/5min（高峰），立即投放A档！<span class="green">清蒸鲈鱼</span>入F3二号机！`;
+    } else {
+      text += `晚餐高峰持续。AI监控：A档已投${S.aBatches}批，客流${vel}人/5min，F3全力补菜。`;
+    }
+  } else if (S.totalMin >= 1140 && S.totalMin < 1200) {
+    if (!S.aiEvents.slowdown) { S.aiEvents.slowdown = true; S.aiEvents.aPause = true; }
+    text += `晚餐折扣时段（¥${getPeriod(S.totalMin).bPrice}），客流${vel}人/5min。<span class="ai">AI</span>暂停A档新批，剩余按折扣价供应。`;
+  } else if (S.totalMin >= 1200 && S.totalMin < 1260) {
+    text += `晚餐尾声，客流${vel}人/5min。<span class="ai">AI</span>预计21:00前可消耗完大部分食材。`;
+  } else if (S.totalMin >= 1260) {
+    if (!S.phaseEvents.dinnerEnd) {
+      S.phaseEvents.dinnerEnd = true;
+      text += `<span class="t">21:00</span> <span class="green">全场赠送时段！</span>今日营业结束。<br>全天统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>。`;
+    } else {
+      const mins = S.totalMin - 1260;
+      text += `赠送时段进行中。若有剩余食材，继续供应。<span class="ai">AI</span>存档今日数据，生成明日采购建议。`;
+    }
+  }
+
+  el.innerHTML = text;
+}
+
+// -------- 模拟循环 --------
+let intervalId = null;
+
+function tick() {
+  if (!S.running) return;
+
+  S.tick++;
+  S.totalMin++;
+
+  const p = getPeriod(S.totalMin);
+  const vel = getVelocity(S.totalMin);
+
+  // 8:00 - 生成采购清单
+  if (S.totalMin === 480 && !S.procureList) {
+    S.procureList = generateProcureList();
+    renderProcureList();
+    document.getElementById('aiBox').style.display = 'block';
+    document.getElementById('aiText').innerHTML = `
+      今日菜单已确定：<br>
+      A档：${TODAY.a.join('、')}<br>
+      B档：${TODAY.b.join('、')}<br>
+      C档：${TODAY.c.join('、')}<br>
+      采购预算：<span class="money">¥${S.procureList.spent}</span> / ¥2,000
+    `;
+  }
+
+  // 8:00-10:00 采购阶段（配菜进度）
+  if (S.totalMin >= 480 && S.totalMin < 630) {
+    const allToday = [...TODAY.a, ...TODAY.b, ...TODAY.c];
+    allToday.forEach(dish => {
+      if (!S.procurementArrived && S.totalMin >= 500) S.procurementArrived = true;
+      const base = S.totalMin >= 500 ? (S.totalMin - 500) / 130 * 100 : 0;
+      S.prepProgress[dish] = Math.min(100, base + Math.random() * 10);
+    });
+    if (S.totalMin >= 620) {
+      allToday.forEach(d => S.prepProgress[d] = 100);
+      S.procureDone = true;
+    }
+  }
+
+  // 10:30 - 开始预热烹饪
+  if (S.totalMin === 630) {
+    S.f3[0] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
+    S.f3[1] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
+    S.f3[2] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
+  }
+
+  // 11:00 - 开始营业
+  if (S.totalMin === 660) {
+    S.f3[0] = { dish: TODAY.b[0], next: '下一道：' + TODAY.b[1], status: 'cooking' };
+    S.f3[1] = { dish: TODAY.b[1], next: '下一道：' + TODAY.b[2], status: 'cooking' };
+    S.f3[2] = { dish: TODAY.c[0], next: '下一道：' + TODAY.c[1], status: 'cooking' };
+  }
+
+  // 11:30+ 正价时段，每5分钟处理客流
+  if (S.totalMin >= 660 && S.totalMin < 900) {
+    if (S.tick % 5 === 0) {
+      const count = vel;
+      for (let i = 0; i < count; i++) {
+        if (Math.random() < 0.88) {
+          S.customers++;
+          let rev = p.bPrice;
+          if (p.tag === 'normal' && Math.random() < 0.28) rev += 5;
+          S.revenue += rev;
+          // AI 投放A档
+          if (p.tag === 'normal' && !S.aPaused && vel >= 6 && S.aBatches < 8) {
+            if (Math.random() < 0.45) {
+              S.aBatches++;
+              const f3i = (S.aBatches - 1) % 3;
+              const dishName = TODAY.a[(S.aBatches - 1) % 2];
+              S.f3[f3i] = { dish: dishName, next: '烹饪中...', status: 'cooking' };
+            }
+          }
+        }
+      }
+    }
+    // F3 完成循环
+    if (S.tick % 6 === 0) {
+      for (let i = 0; i < 3; i++) {
+        if (S.f3[i].status === 'cooking') {
+          S.f3[i].status = 'ready';
+          S.f3[i].next = '→ 已投放保温台';
+        } else if (S.f3[i].status === 'ready') {
+          const nextDish = TODAY.b[(Math.floor(S.tick/6) + i) % TODAY.b.length];
+          S.f3[i] = { dish: nextDish, next: '下一道...', status: 'idle' };
+        }
+      }
+    }
+  }
+
+  // 晚餐
+  if (S.totalMin >= 1020 && S.totalMin < 1260) {
+    if (S.tick % 5 === 0) {
+      const count = vel;
+      for (let i = 0; i < count; i++) {
+        if (Math.random() < 0.88) {
+          S.customers++;
+          let rev = p.bPrice;
+          if (p.tag === 'normal' && Math.random() < 0.28) rev += 5;
+          S.revenue += rev;
+          if (p.tag === 'normal' && !S.aPaused && vel >= 6 && S.aBatches < 8) {
+            if (Math.random() < 0.45) {
+              S.aBatches++;
+              const f3i = (S.aBatches - 1) % 3;
+              const dishName = TODAY.a[(S.aBatches - 1) % 2];
+              S.f3[f3i] = { dish: dishName, next: '烹饪中...', status: 'cooking' };
+            }
+          }
+        }
+      }
+    }
+    if (S.tick % 6 === 0) {
+      for (let i = 0; i < 3; i++) {
+        if (S.f3[i].status === 'cooking') {
+          S.f3[i].status = 'ready';
+          S.f3[i].next = '→ 已投放保温台';
+        } else if (S.f3[i].status === 'ready') {
+          const nextDish = TODAY.b[(Math.floor(S.tick/6) + i) % TODAY.b.length];
+          S.f3[i] = { dish: nextDish, next: '下一道...', status: 'idle' };
+        }
+      }
+    }
+  }
+
+  // A档暂停（客流不足时）
+  if (S.totalMin >= 780 && S.totalMin < 1140) {
+    if (vel < 5) S.aPaused = true;
+    else if (vel >= 6) S.aPaused = false;
+  }
+
+  updateUI();
+  updateNarrative();
+
+  // 结束
+  if (S.totalMin >= 1440) { // 24:00
+    S.running = false;
+    document.getElementById('playBtn').textContent = '▶ 重播';
+    document.getElementById('playBtn').onclick = resetSim;
+  }
+}
+
+function renderProcureList() {
+  if (!S.procureList) return;
+  const list = document.getElementById('procureList');
+  list.innerHTML = '';
+  S.procureList.items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'procure-item';
+    div.innerHTML = `
+      <span class="name">${item.name}</span>
+      <span class="qty">${item.qty}${item.unit}</span>
+      <span class="price">¥${item.cost}</span>
+    `;
+    list.appendChild(div);
+  });
+  const total = document.createElement('div');
+  total.className = 'procure-item';
+  total.style.borderTop = '2px solid #333';
+  total.style.marginTop = '6px';
+  total.style.paddingTop = '8px';
+  total.innerHTML = `<span style="color:#888;font-size:11px;">合计</span><span></span><span class="qty" style="color:#f39c12;font-size:14px;">¥${S.procureList.spent}</span>`;
+  list.appendChild(total);
+}
+
+function togglePlay() {
+  if (S.running) {
+    S.running = false;
+    document.getElementById('playBtn').textContent = '▶ 继续';
+    clearInterval(intervalId);
+  } else {
+    S.running = true;
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    intervalId = setInterval(tick, 1000 / S.speed);
+  }
+}
+
+function resetSim() {
+  clearInterval(intervalId);
+  S = {
+    running: false, speed: S.speed, tick: 0, totalMin: 480,
+    customers: 0, revenue: 0, aBatches: 0, aPaused: false,
+    procureDone: false, prepDone: false,
+    phaseEvents: { procureDone: false, prepDone: false, cookStart: false, lunchEnd: false, dinnerEnd: false },
+    f3: [
+      { dish: '—', next: '空闲中', status: 'idle' },
+      { dish: '—', next: '空闲中', status: 'idle' },
+      { dish: '—', next: '空闲中', status: 'idle' },
+    ],
+    prepProgress: {}, procureList: S.procureList, // 保留采购清单
+    procurementArrived: false, lastPhase: null,
+    aiEvents: { peakDetected: false, aReleased: false, slowdown: false, aPause: false, closed: false },
+  };
+  document.getElementById('playBtn').textContent = '▶ 开始';
+  document.getElementById('playBtn').onclick = togglePlay;
+  document.getElementById('procureList').innerHTML = '<div style="font-size:12px;color:#555;padding:20px;text-align:center;">等待AI生成采购清单...</div>';
+  document.getElementById('aiBox').style.display = 'none';
+  updateUI();
+  updateNarrative();
+}
+
+function setSpeed(s) {
+  S.speed = s;
+  document.querySelectorAll('.speed-btns button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sp' + s).classList.add('active');
+  if (S.running) {
+    clearInterval(intervalId);
+    intervalId = setInterval(tick, 1000 / s);
+  }
+}
+
+// -------- 时间轴按钮 --------
+function buildTimeline() {
+  const bar = document.getElementById('topBar');
+  const phases = [
+    { h: 8,  label: '08:00', cls: 'phase-procure', note: '采购' },
+    { h: 10, label: '10:00', cls: 'phase-prep', note: '备菜' },
+    { h: 10, label: '10:30', cls: 'phase-cook', note: '预热' },
+    { h: 11, label: '11:00', cls: 'phase-open', note: '开业' },
+    { h: 12, label: '12:00', cls: 'phase-open', note: '' },
+    { h: 13, label: '13:00', cls: 'phase-open', note: '' },
+    { h: 15, label: '15:00', cls: 'phase-close', note: '午休' },
+    { h: 17, label: '17:00', cls: 'phase-open', note: '晚餐' },
+    { h: 18, label: '18:00', cls: 'phase-open', note: '' },
+    { h: 19, label: '19:00', cls: 'phase-open', note: '' },
+    { h: 21, label: '21:00', cls: 'phase-close', note: '赠送' },
+  ];
+  phases.forEach(p => {
+    const btn = document.createElement('div');
+    btn.className = 'hour-btn ' + p.cls;
+    btn.dataset.h = p.h;
+    btn.textContent = p.label + (p.note ? ' ' + p.note : '');
+    btn.onclick = () => jumpToHour(p.h);
+    bar.insertBefore(btn, bar.querySelector('.top-right'));
+  });
+}
+
+function jumpToHour(h) {
+  S.totalMin = h * 60;
+  S.tick = S.totalMin - 480;
+  S.running = false;
+  clearInterval(intervalId);
+  document.getElementById('playBtn').textContent = '▶ 继续';
+  updateUI();
+  updateNarrative();
+}
+
+// -------- 初始化 --------
+buildTimeline();
+updateUI();
+updateNarrative();
+</script>
+</body>
+</html>
