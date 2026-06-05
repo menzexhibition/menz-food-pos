@@ -1196,14 +1196,12 @@ function updateNarrative() {
       text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余熟食，<span class="green">全部赠送</span>。`;
     } else {
       const mins = S.totalMin - 900;
-      if (mins < 30) {
-        text += `剩余熟食赠送中。<span class="ai">AI</span>分析午市数据，准备晚餐备菜计划。`;
-      } else if (mins < 90) {
-        text += `晚餐备菜进行中。中餐剩余生食材继续使用，新配菜框装框中。<span class="ai">AI</span>监控进度。`;
-        renderKitchenPrep();
+      if (mins < 60) {
+        text += `剩余熟食赠送完毕。厨师休息，<span class="green">晚餐配菜框早上已全部备好</span>，冷藏柜待取。`;
+      } else if (mins < 100) {
+        text += `厨师休息中。16:30预热F3，17:00直接取框上菜。`;
       } else {
-        text += `晚餐配菜即将完成。16:30预热F3，17:00准时开业。`;
-        renderKitchenPrep();
+        text += `即将预热F3。晚餐配菜框已就绪，<span class="green">从冷藏柜取框即可</span>。`;
       }
     }
   } else if (S.totalMin >= 1020 && S.totalMin < 1050) {
