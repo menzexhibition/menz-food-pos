@@ -154,6 +154,81 @@
       grid-template-columns: 1fr 1fr;
       gap: 6px;
       margin-top: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .basket-card {
+      background: #1a1a2e;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+    .basket-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .basket-id { color: #555; font-size: 10px; min-width: 24px; }
+    .basket-dish { color: #e0e0e0; font-weight: bold; flex: 1; }
+    .basket-tier { font-size: 10px; font-weight: bold; }
+    .basket-ings { color: #888; font-size: 10px; margin-bottom: 5px; line-height: 1.4; }
+    .basket-progress-wrap { background: #222; border-radius: 3px; height: 4px; margin-bottom: 4px; overflow: hidden; }
+    .basket-progress-bar { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .basket-status { color: #555; font-size: 10px; }
+    .basket-summary {
+      grid-column: 1/-1;
+      background: #0f1a0f;
+      border: 1px solid #1a3a1a;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #4ade80;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    /* 厨房备菜指令 */
+    .kitchen-prep-panel {
+      background: #0f1a2e;
+      border: 1px solid #1d4ed8;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .kp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; font-weight: bold; color: #fff; }
+    .kp-dot { width: 10px; height: 10px; border-radius: 50%; background: #1d4ed8; flex-shrink: 0; }
+    .kp-dot.active { background: #22c55e; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .kp-instructions {
+      background: #12122a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #c4d4f0;
+      line-height: 1.8;
+      margin-bottom: 10px;
+      border-left: 3px solid #1d4ed8;
+    }
+    .kp-instructions .kp-step { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .kp-instructions .kp-step-num { color: #1d4ed8; font-weight: bold; min-width: 20px; }
+    .kp-instructions .kp-step-text { flex: 1; }
+    .kp-instructions .kp-step-done { color: #4ade80; text-decoration: line-through; }
+    .kp-instructions .kp-step-active { color: #fbbf24; font-weight: bold; }
+    .kp-progress-area { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .kp-dish-card { background: #1a1a2e; border-radius: 6px; padding: 8px; border-left: 3px solid #1d4ed8; }
+    .kp-dish-card.tier-A { border-left-color: #e94560; }
+    .kp-dish-card.tier-B { border-left-color: #f39c12; }
+    .kp-dish-card.tier-C { border-left-color: #27ae60; }
+    .kp-dish-name { font-size: 11px; color: #e0e0e0; font-weight: bold; margin-bottom: 3px; }
+    .kp-dish-baskets { font-size: 10px; color: #888; }
+    .kp-dish-bar { background: #222; border-radius: 3px; height: 4px; margin-top: 4px; overflow: hidden; }
+    .kp-dish-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .kp-done-banner {
+      background: #0f2a1a;
+      border: 1px solid #22c55e;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      color: #4ade80;
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 8px;
     }
     .prep-dish {
       background: #1a1a2e;
@@ -429,9 +504,22 @@
 
   <!-- 下方：后厨电视 -->
   <div class="panel" style="grid-column:1/-1">
-    <div class="panel-title">③ 后厨电视（F3 指令）</div>
+    <div class="panel-title">③ 后厨电视</div>
 
-    <div class="a-control" id="aControl">
+    <!-- 备菜指令区（营业前显示） -->
+    <div class="kitchen-prep-panel" id="kitchenPrepPanel">
+      <div class="kp-header">
+        <span class="kp-dot" id="kpDot"></span>
+        <span id="kpTitle">AI 备菜指令</span>
+      </div>
+      <div class="kp-instructions" id="kpInstructions">
+        等待AI生成今日备菜计划...
+      </div>
+      <div class="kp-progress-area" id="kpProgressArea"></div>
+    </div>
+
+    <!-- A档控制（营业时显示） -->
+    <div class="a-control" id="aControl" style="display:none">
       <div class="a-header">
         <div class="a-dot" id="aDot"></div>
         A档 出菜控制
@@ -441,26 +529,7 @@
       <div class="a-info" id="aInfo">已投放：0 批 | 剩余：8 批</div>
     </div>
 
-    <div class="kitchen-grid" id="kitchenGrid">
-      <div class="f3-card idle" id="f3-0">
-        <div class="f3-num">F3 一号机</div>
-        <div class="f3-dish" id="fd0">—</div>
-        <div class="f3-next" id="fn0">空闲中</div>
-        <span class="f3-status-pill st-idle" id="fs0">空闲</span>
-      </div>
-      <div class="f3-card idle" id="f3-1">
-        <div class="f3-num">F3 二号机</div>
-        <div class="f3-dish" id="fd1">—</div>
-        <div class="f3-next" id="fn1">空闲中</div>
-        <span class="f3-status-pill st-idle" id="fs1">空闲</span>
-      </div>
-      <div class="f3-card idle" id="f3-2">
-        <div class="f3-num">F3 三号机</div>
-        <div class="f3-dish" id="fd2">—</div>
-        <div class="f3-next" id="fn2">空闲中</div>
-        <span class="f3-status-pill st-idle" id="fs2">空闲</span>
-      </div>
-    </div>
+    <div class="kitchen-grid" id="kitchenGrid"></div>
   </div>
 
   <!-- 叙述 -->
@@ -507,6 +576,211 @@ const TODAY = {
   b: ['洋葱牛肉', '糖醋里脊', '咕噜肉', '啫啫滑鸡'],  // 今天4道
   c: ['番茄炒蛋', '苦瓜炒蛋', '蒜蓉菜心', '四季豆肉末'], // 今天4道
 };
+
+// -------- 菜品配方（每框10人份） --------
+const DISH_RECIPES = {
+  '姜葱牛肉':   { ing: { '牛肉':1.5,'洋葱':0.5,'葱姜':0.3,'蚝油':0.1,'沙姜':0.1 }, tag:'A' },
+  '清蒸鲈鱼':   { ing: { '鲈鱼':1.0,'葱姜':0.3,'蚝油':0.1,'蒜':2 }, tag:'A' },
+  '洋葱牛肉':   { ing: { '牛肉':1.5,'洋葱':0.8,'葱姜':0.3,'沙爹酱':0.1 }, tag:'B' },
+  '糖醋里脊':   { ing: { '五花肉':2.0,'番茄':0.5,'酸梅酱':0.1,'蚝油':0.1 }, tag:'B' },
+  '咕噜肉':     { ing: { '五花肉':2.0,'菠萝':1,'酸梅酱':0.2,'番茄':0.3 }, tag:'B' },
+  '啫啫滑鸡':   { ing: { '鸡肉':2.0,'葱姜':0.4,'沙姜':0.1,'蚝油':0.1 }, tag:'B' },
+  '番茄炒蛋':   { ing: { '鸡蛋':1.0,'番茄':1.5,'葱姜':0.2 }, tag:'C' },
+  '苦瓜炒蛋':   { ing: { '鸡蛋':1.0,'苦瓜':1.0,'葱姜':0.2 }, tag:'C' },
+  '蒜蓉菜心':   { ing: { '菜心':2.0,'蒜':3,'蚝油':0.1 }, tag:'C' },
+  '四季豆肉末': { ing: { '四季豆':1.5,'猪肉末':1.0,'蒜':2,'蚝油':0.1 }, tag:'C' },
+};
+// 计算每框成本
+Object.keys(DISH_RECIPES).forEach(dish => {
+  let cost = 0;
+  Object.entries(DISH_RECIPES[dish].ing).forEach(([ing, qty]) => {
+    cost += qty * (INGREDIENTS[ing]?.price || 0);
+  });
+  DISH_RECIPES[dish].cost = Math.round(cost * 10) / 10;
+});
+
+// -------- 配菜框生成（AI按¥2,000预算优化分配） --------
+const BASKET_COUNTS = { a: 6, b: 4, c: 6 }; // 每道菜准备几框（A+B+C = ¥1,822 < ¥2,000）
+
+function generatePrepBaskets() {
+  const baskets = [];
+  let basketId = 1;
+
+  TODAY.a.forEach(dish => {
+    const recipe = DISH_RECIPES[dish];
+    for (let b = 0; b < BASKET_COUNTS.a; b++) {
+      const ings = Object.entries(recipe.ing).map(([name, qty]) => ({
+        name, qty: +qty.toFixed(1), unit: INGREDIENTS[name]?.unit || ''
+      }));
+      baskets.push({ id: basketId++, dish, tier: 'A', status: 'queued', ings, cost: recipe.cost });
+    }
+  });
+
+  TODAY.b.forEach(dish => {
+    const recipe = DISH_RECIPES[dish];
+    for (let b = 0; b < BASKET_COUNTS.b; b++) {
+      const ings = Object.entries(recipe.ing).map(([name, qty]) => ({
+        name, qty: +qty.toFixed(1), unit: INGREDIENTS[name]?.unit || ''
+      }));
+      baskets.push({ id: basketId++, dish, tier: 'B', status: 'queued', ings, cost: recipe.cost });
+    }
+  });
+
+  TODAY.c.forEach(dish => {
+    const recipe = DISH_RECIPES[dish];
+    for (let b = 0; b < BASKET_COUNTS.c; b++) {
+      const ings = Object.entries(recipe.ing).map(([name, qty]) => ({
+        name, qty: +qty.toFixed(1), unit: INGREDIENTS[name]?.unit || ''
+      }));
+      baskets.push({ id: basketId++, dish, tier: 'C', status: 'queued', ings, cost: recipe.cost });
+    }
+  });
+
+  // 计算总采购成本
+  S.procureCost = baskets.reduce((sum, b) => sum + b.cost, 0);
+  return baskets;
+}
+
+function renderBaskets() {
+  const el = document.getElementById('prepGrid');
+  if (!S.prepBaskets) return;
+  const done = S.totalMin >= 620;
+  const totalCost = S.prepBaskets.reduce((s, b) => s + b.cost, 0);
+  el.innerHTML = S.prepBaskets.map(b => {
+    const tierColor = { A: '#e94560', B: '#f39c12', C: '#27ae60' }[b.tier];
+    const tierName = { A:'A档', B:'B档', C:'C档' }[b.tier];
+    const ings = b.ings.map(i => `${i.name}${i.qty}${i.unit}`).join(' / ');
+    return `<div class="basket-card" style="border-left:3px solid ${tierColor}">
+      <div class="basket-header">
+        <span class="basket-id">#${b.id}</span>
+        <span class="basket-dish">${b.dish}</span>
+        <span class="basket-tier" style="color:${tierColor}">${tierName}</span>
+      </div>
+      <div class="basket-ings">${ings}</div>
+      <div class="basket-progress-wrap">
+        <div class="basket-progress-bar" style="width:${done?100:Math.min(100,(S.totalMin-480)/140*100)}%;background:${tierColor}"></div>
+      </div>
+      <div class="basket-status">${done ? '✓ 配菜完成' : `¥${b.cost} / 框`}</div>
+    </div>`;
+  }).join('') + `<div class="basket-summary">
+    共${S.prepBaskets.length}框 · 总成本¥${Math.round(totalCost)} · 剩余¥${2000 - Math.round(totalCost)}
+  </div>`;
+}
+
+// -------- 后厨备菜指令渲染 --------
+function renderKitchenPrep() {
+  const panel = document.getElementById('kitchenPrepPanel');
+  const instrEl = document.getElementById('kpInstructions');
+  const progEl = document.getElementById('kpProgressArea');
+  const dot = document.getElementById('kpDot');
+  const title = document.getElementById('kpTitle');
+
+  // 营业后隐藏
+  if (S.totalMin >= 660) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+
+  const elapsed = S.totalMin - 480; // 0~150分钟
+  const done = S.totalMin >= 620;
+
+  // 标题 + dot
+  title.textContent = done ? '✓ 备菜完成' : '🔪 AI 备菜指令';
+  dot.className = 'kp-dot ' + (done ? 'active' : 'active');
+
+  if (!done) {
+    // 分阶段指令
+    let steps = [];
+    if (elapsed < 20) {
+      steps = [
+        { text: '等待供应商送货...', done: false, active: true },
+        { text: '取今日菜单并核对配菜框数量', done: false, active: false },
+        { text: '清洗蔬菜和配料', done: false, active: false },
+        { text: '切配主料（牛肉/鸡肉/猪肉）', done: false, active: false },
+      ];
+    } else if (elapsed < 60) {
+      steps = [
+        { text: '✓ 食材已到货验收', done: true, active: false },
+        { text: '按配菜框清单精确称量主料和配料', done: false, active: true },
+        { text: '清洗蔬菜和配料', done: false, active: false },
+        { text: '切配主料（牛肉/鸡肉/猪肉）', done: false, active: false },
+      ];
+    } else if (elapsed < 100) {
+      steps = [
+        { text: '✓ 食材已到货验收', done: true, active: false },
+        { text: '✓ 按配菜框清单精确称量主料和配料', done: true, active: false },
+        { text: '✓ 清洗蔬菜和配料', done: true, active: false },
+        { text: '切配主料（牛肉/鸡肉/猪肉）→ 装框', done: false, active: true },
+      ];
+    } else {
+      steps = [
+        { text: '✓ 食材已到货验收', done: true, active: false },
+        { text: '✓ 按配菜框清单精确称量主料和配料', done: true, active: false },
+        { text: '✓ 清洗蔬菜和配料', done: true, active: false },
+        { text: '✓ 切配主料并装框完成', done: true, active: false },
+      ];
+    }
+
+    instrEl.innerHTML = steps.map((s, i) =>
+      `<div class="kp-step">
+        <span class="kp-step-num">${i+1}.</span>
+        <span class="kp-step-text ${s.done ? 'kp-step-done' : s.active ? 'kp-step-active' : ''}">${s.text}</span>
+      </div>`
+    ).join('');
+
+    // 每道菜的配菜进度
+    const allDishes = [...TODAY.a, ...TODAY.b, ...TODAY.c];
+    const tierMap = {};
+    allDishes.forEach(d => {
+      const tier = DISH_RECIPES[d]?.tag || 'C';
+      if (!tierMap[tier]) tierMap[tier] = [];
+      tierMap[tier].push(d);
+    });
+
+    const tierColors = { A: '#e94560', B: '#f39c12', C: '#27ae60' };
+    const tierNames = { A: 'A档', B: 'B档', C: 'C档' };
+
+    const cards = [];
+    ['A', 'B', 'C'].forEach(tier => {
+      (tierMap[tier] || []).forEach(dish => {
+        const baskets = S.prepBaskets ? S.prepBaskets.filter(b => b.dish === dish) : [];
+        const progress = done ? 100 : Math.min(100, (elapsed / 140) * 100);
+        cards.push(`
+          <div class="kp-dish-card tier-${tier}">
+            <div class="kp-dish-name">${tierNames[tier]} ${dish}</div>
+            <div class="kp-dish-baskets">${baskets.length}框 × 10人份</div>
+            <div class="kp-dish-bar">
+              <div class="kp-dish-bar-fill" style="width:${progress}%;background:${tierColors[tier]}"></div>
+            </div>
+          </div>`);
+      });
+    });
+    progEl.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:6px;">各道菜配菜进度</div><div class="kp-progress-area">${cards.join('')}</div>`;
+  } else {
+    // 全部完成
+    instrEl.innerHTML = '';
+    const total = S.prepBaskets ? S.prepBaskets.length : 0;
+    const totalCost = S.prepBaskets ? S.prepBaskets.reduce((s,b) => s+b.cost, 0) : 0;
+    progEl.innerHTML = `<div class="kp-done-banner">
+      ✓ 全部${total}框配菜完成！<br>
+      <span style="font-size:11px;color:#888">总成本 ¥${Math.round(totalCost)} / 预算¥2,000</span><br>
+      <span style="color:#fbbf24;font-size:12px">10:30 开始预热 F3 🔥</span>
+    </div>`;
+  }
+}
+
+// -------- 后厨F3卡渲染 --------
+function renderKitchenF3() {
+  const grid = document.getElementById('kitchenGrid');
+  grid.innerHTML = [0, 1, 2].map(i => `
+    <div class="f3-card idle" id="f3-${i}">
+      <div class="f3-num">F3 ${'一二三'[i]}号机</div>
+      <div class="f3-dish" id="fd${i}">—</div>
+      <div class="f3-next" id="fn${i}">空闲中</div>
+      <span class="f3-status-pill st-idle" id="fs${i}">空闲</span>
+    </div>`).join('');
+}
 
 // -------- 时段 --------
 function getPeriod(totalMin) {
@@ -648,7 +922,9 @@ let S = {
   ],
   prepProgress: {}, // 每道菜的备菜进度 %
   procureList: null,
+  prepBaskets: null,  // 配菜框列表
   procurementArrived: false,
+  procureBasketsDone: false,
   lastPhase: null,
   aiEvents: { peakDetected: false, aReleased: false, slowdown: false, aPause: false, closed: false },
 };
@@ -712,6 +988,17 @@ function updateUI() {
   const phaseTexts = { procure: '准备中', cook: '即将开业', open: '营业中', close: '已打烊' };
   phaseLbl.textContent = phaseTexts[p.phase] || '准备中';
   phaseLbl.style.background = phaseColors[p.phase] || '#333';
+
+  // 菜单显示
+  const menuEl = document.getElementById('displayDishes');
+  if (p.phase === 'procure' || p.phase === 'cook') {
+    const aCount = S.prepBaskets ? S.prepBaskets.filter(b => b.tier === 'A').length : 0;
+    const bCount = S.prepBaskets ? S.prepBaskets.filter(b => b.tier === 'B').length : 0;
+    const cCount = S.prepBaskets ? S.prepBaskets.filter(b => b.tier === 'C').length : 0;
+    menuEl.innerHTML = `<span style="color:#e94560">★ ${TODAY.a.join(' / ')}</span><br>${TODAY.b.join(' / ')}<br>${TODAY.c.join(' / ')}`;
+  } else {
+    menuEl.innerHTML = `<span style="color:#e94560">★ ${TODAY.a.join(' / ')}</span><br>${TODAY.b.join(' / ')}<br>${TODAY.c.join(' / ')}`;
+  }
 
   const dPrice = document.getElementById('displayPrice');
   dPrice.textContent = p.bPrice > 0 ? '¥' + p.bPrice : '¥0';
@@ -817,9 +1104,8 @@ function updateUI() {
     document.getElementById('fs' + i).textContent = txt;
   }
 
-  // 配菜进度
-  updatePrepGrid();
-}
+  // 配菜进度（收银员面板）
+  renderBaskets();
 
 function updatePrepGrid() {
   const grid = document.getElementById('prepGrid');
@@ -848,16 +1134,20 @@ function updateNarrative() {
   let text = `<span class="t">${fmt(S.totalMin)}</span> `;
 
   if (S.totalMin >= 480 && S.totalMin < 630) {
-    if (!S.procureDone) {
-      if (S.totalMin < 500) {
-        text += `<span class="ai">AI</span>分析今日食材价格，生成采购清单。<span class="money">¥${S.procureList ? S.procureList.spent : '...'}</span>/<span class="money">¥2,000</span>预算分配。`;
-      } else if (S.totalMin < 560) {
-        text += `食材陆续到达。<span class="green">洋葱、牛肉、鸡肉</span>已入库，厨师开始分类处理。`;
-      } else if (S.totalMin < 620) {
-        text += `所有食材采购完毕。<span class="green">${TODAY.a.join('、')}</span>备菜中。`;
-      } else {
-        text += `配菜完成。<span class="ai">AI</span>发出烹饪预热指令：10:30开始预热F3。`;
-      }
+    if (!S.prepBaskets) return; // 等待 tick() 生成配菜框
+    if (!S.procureBasketsDone) {
+      S.procureBasketsDone = true;
+      S.prepBaskets = generatePrepBaskets();
+      renderBaskets();
+    }
+    renderKitchenPrep();
+    // 收银员参考：简报
+    if (S.totalMin < 500) {
+      text += `系统启动。<span class="ai">AI</span>已分配采购预算<span class="money">¥${S.procureList ? S.procureList.spent : '...'}</span>，共${S.prepBaskets.length}框。厨房备菜中。`;
+    } else if (S.totalMin < 620) {
+      text += `配菜进行中：${TODAY.a.join('、')}等共${S.prepBaskets.length}框。<span class="ai">AI</span>监控备菜进度。`;
+    } else {
+      text += `全部<span class="money">${S.prepBaskets.length}框</span>配菜完成！10:30预热F3，<span class="green">11:00准时开业</span>。`;
     }
   } else if (S.totalMin >= 630 && S.totalMin < 660) {
     if (!S.phaseEvents.cookStart) {
@@ -901,32 +1191,40 @@ function updateNarrative() {
   } else if (S.totalMin >= 900 && S.totalMin < 1020) {
     if (!S.phaseEvents.lunchEnd) {
       S.phaseEvents.lunchEnd = true;
-      text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余熟食，<span class="green">全部赠送</span>，决定晚餐菜量。`;
+      S.lunchCustomers = S.customers;
+      S.lunchRevenue = S.revenue;
+      text += `<span class="t">${fmt(S.totalMin)}</span> <span class="green">午休停业。</span>午餐统计：服务<span class="money">${S.customers}人</span>，收入<span class="money">¥${S.revenue}</span>，A档投放${S.aBatches}批。<span class="ai">AI</span>检查剩余熟食，<span class="green">全部赠送</span>。`;
     } else {
       const mins = S.totalMin - 900;
-      if (mins < 60) text += `午休中。<span class="ai">AI</span>分析上午数据：午餐客单价¥${S.customers > 0 ? Math.round(S.revenue/S.customers) : 0}。`;
-      else if (mins < 100) text += `厨师休息。<span class="ai">AI</span>已安排晚餐备菜计划，17:00准时开业。`;
-      else text += `即将恢复晚餐备菜。检查剩余食材中...`;
+      if (mins < 30) {
+        text += `剩余熟食赠送中。<span class="ai">AI</span>分析午市数据，准备晚餐备菜计划。`;
+      } else if (mins < 90) {
+        text += `晚餐备菜进行中。中餐剩余生食材继续使用，新配菜框装框中。<span class="ai">AI</span>监控进度。`;
+        renderKitchenPrep();
+      } else {
+        text += `晚餐配菜即将完成。16:30预热F3，17:00准时开业。`;
+        renderKitchenPrep();
+      }
     }
   } else if (S.totalMin >= 1020 && S.totalMin < 1050) {
     if (!S.aiEvents.peakDetected) { S.aiEvents.peakDetected = true; S.aiEvents.aReleased = false; }
     if (S.totalMin === 1020) {
-      text += `<span class="t">17:00</span> <span class="green">晚餐开业！</span>优惠时段（¥15）。<span class="ai">AI</span>重置午餐数据，准备晚餐出餐计划。`;
+      text += `<span class="t">17:00</span> <span class="green">晚餐开业！</span>优惠时段（¥15）。<span class="ai">AI</span>三台F3先上B/C档，A档待命，17:30开放。`;
     } else {
-      text += `晚餐优惠时段，客流${vel}人/5min。AI继续监控，等待17:30正价开放A档。`;
+      text += `晚餐优惠时段（¥15）。客流${vel}人/5min。B/C档供应中，<span class="ai">AI</span>等待17:30开放A档。`;
     }
   } else if (S.totalMin >= 1050 && S.totalMin < 1140) {
     if (!S.aiEvents.aReleased) {
       S.aiEvents.aReleased = true;
-      text += `<span class="ai">AI决策：</span>晚餐客流${vel}人/5min（高峰），立即投放A档！<span class="green">清蒸鲈鱼</span>入F3二号机！`;
+      text += `<span class="ai">AI决策：</span>17:30已到，A档正式开放！<span class="green">清蒸鲈鱼</span>入F3！客流${vel}人/5min，密切监控买单速度。`;
     } else {
-      text += `晚餐高峰持续。AI监控：A档已投${S.aBatches}批，客流${vel}人/5min，F3全力补菜。`;
+      text += `晚餐正价（¥18+¥5加购A档）。客流${vel}人/5min。<span class="ai">AI</span>监控：A档已投${S.aBatches}批，F3全力补菜中。`;
     }
   } else if (S.totalMin >= 1140 && S.totalMin < 1200) {
     if (!S.aiEvents.slowdown) { S.aiEvents.slowdown = true; S.aiEvents.aPause = true; }
-    text += `晚餐折扣时段（¥${getPeriod(S.totalMin).bPrice}），客流${vel}人/5min。<span class="ai">AI</span>暂停A档新批，剩余按折扣价供应。`;
+    text += `晚餐折扣时段（¥${getPeriod(S.totalMin).bPrice}）。客流${vel}人/5min。<span class="ai">AI</span>暂停A档新批，剩余A档按折扣价供应。`;
   } else if (S.totalMin >= 1200 && S.totalMin < 1260) {
-    text += `晚餐尾声，客流${vel}人/5min。<span class="ai">AI</span>预计21:00前可消耗完大部分食材。`;
+    text += `晚餐尾声（¥${getPeriod(S.totalMin).bPrice}）。客流${vel}人/5min。<span class="ai">AI</span>预计21:00前可消耗剩余食材。`;
   } else if (S.totalMin >= 1260) {
     if (!S.phaseEvents.dinnerEnd) {
       S.phaseEvents.dinnerEnd = true;
@@ -962,33 +1260,49 @@ function tick() {
       A档：${TODAY.a.join('、')}<br>
       B档：${TODAY.b.join('、')}<br>
       C档：${TODAY.c.join('、')}<br>
+      配菜框：共${S.prepBaskets ? S.prepBaskets.length : '?'}框（每框10人份）<br>
       采购预算：<span class="money">¥${S.procureList.spent}</span> / ¥2,000
     `;
   }
 
   // 8:00-10:00 采购阶段（配菜进度）
   if (S.totalMin >= 480 && S.totalMin < 630) {
-    const allToday = [...TODAY.a, ...TODAY.b, ...TODAY.c];
-    allToday.forEach(dish => {
-      if (!S.procurementArrived && S.totalMin >= 500) S.procurementArrived = true;
-      const base = S.totalMin >= 500 ? (S.totalMin - 500) / 130 * 100 : 0;
-      S.prepProgress[dish] = Math.min(100, base + Math.random() * 10);
-    });
+    // 生成配菜框（仅一次）
+    if (!S.procureBasketsDone) {
+      S.procureBasketsDone = true;
+      S.prepBaskets = generatePrepBaskets();
+    }
+    // 实时刷新配菜进度
+    renderBaskets();
+
     if (S.totalMin >= 620) {
-      allToday.forEach(d => S.prepProgress[d] = 100);
       S.procureDone = true;
     }
   }
 
   // 10:30 - 开始预热烹饪
   if (S.totalMin === 630) {
+    renderKitchenF3();
+    document.getElementById('kitchenPrepPanel').style.display = 'none';
+    document.getElementById('aControl').style.display = 'block';
     S.f3[0] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
     S.f3[1] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
     S.f3[2] = { dish: '预热中', next: '等待11:00出菜', status: 'cooking' };
   }
 
-  // 11:00 - 开始营业
+  // 11:00 - 午餐开业（B/C档先上，不上A档）
   if (S.totalMin === 660) {
+    S.f3[0] = { dish: TODAY.b[0], next: '下一道：' + TODAY.b[1], status: 'cooking' };
+    S.f3[1] = { dish: TODAY.b[1], next: '下一道：' + TODAY.b[2], status: 'cooking' };
+    S.f3[2] = { dish: TODAY.c[0], next: '下一道：' + TODAY.c[1], status: 'cooking' };
+  }
+
+  // 17:00 - 晚餐开业（B/C档先上，不上A档）
+  if (S.totalMin === 1020) {
+    S.customers = 0;
+    S.revenue = 0;
+    S.aBatches = 0;
+    S.aiEvents = { peakDetected: false, aReleased: false, slowdown: false, aPause: false, closed: false };
     S.f3[0] = { dish: TODAY.b[0], next: '下一道：' + TODAY.b[1], status: 'cooking' };
     S.f3[1] = { dish: TODAY.b[1], next: '下一道：' + TODAY.b[2], status: 'cooking' };
     S.f3[2] = { dish: TODAY.c[0], next: '下一道：' + TODAY.c[1], status: 'cooking' };
@@ -1128,13 +1442,14 @@ function resetSim() {
       { dish: '—', next: '空闲中', status: 'idle' },
       { dish: '—', next: '空闲中', status: 'idle' },
     ],
-    prepProgress: {}, procureList: S.procureList, // 保留采购清单
+    prepProgress: {}, procureList: S.procureList, prepBaskets: null, procureBasketsDone: false, // 保留采购清单
     procurementArrived: false, lastPhase: null,
     aiEvents: { peakDetected: false, aReleased: false, slowdown: false, aPause: false, closed: false },
   };
   document.getElementById('playBtn').textContent = '▶ 开始';
   document.getElementById('playBtn').onclick = togglePlay;
   document.getElementById('procureList').innerHTML = '<div style="font-size:12px;color:#555;padding:20px;text-align:center;">等待AI生成采购清单...</div>';
+  document.getElementById('prepGrid').innerHTML = '';
   document.getElementById('aiBox').style.display = 'none';
   updateUI();
   updateNarrative();
